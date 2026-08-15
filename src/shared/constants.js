@@ -49,3 +49,21 @@ export const MODEL = Object.freeze({
 
 export const UNCERTAIN_LOW = 0.08;
 export const UNCERTAIN_HIGH = 0.55;
+
+// MIT web-stress head: same ViT-S/384 backbone, ImageNet normalize,
+// small 384→32→1 head trained with JPEG/crop/webp augmentation.
+export const WEB_HEAD = Object.freeze({
+  id: 'proofmark-webwild-v3',
+  source: 'https://github.com/Dyno-man/Dino-ImageGen-Ext',
+  license: 'MIT',
+  inputSize: 384,
+  resizeShortest: 440,
+  weightFile: 'onnx/model_quantized.onnx',
+  weightSha256: 'ed17ceb332bef84d0adcc2fa537eef85ed3ac6fb32c30393c326321fbbe54683',
+  mean: Object.freeze([0.485, 0.456, 0.406]),
+  std: Object.freeze([0.229, 0.224, 0.225]),
+  calibration: Object.freeze({
+    rawThreshold: 0.020887045509173325,
+    displayThreshold: 0.65
+  })
+});

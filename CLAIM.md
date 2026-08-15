@@ -13,6 +13,7 @@ Veil scores every visible webpage image entirely inside Chrome and **blurs likel
 **Why this one is faster and more general than the WASM-only forks:**
 
 - Official **Community Forensics ViT-S/384** (July 2026 corrected export — 6 heads, CLIP normalize, single logit). Trained on 2.7M images / 4,803 generators, not a 7-generator Tiny-GenImage head.
+- Cascaded **web-stress head** (MIT) only on uncertain / large-square images, so Midjourney/JPEG samples CF under-scores still get caught without extra false positives.
 - **WebGPU FP32 first**, WASM INT8 fallback. Mean Node/ORT CPU pass on the public sample is ~80 ms; GPU is the production path.
 - Direct **onnxruntime-web** — no Transformers.js wrapper.
 - **Logit shift 0.50 → 0.65** so the bounty’s required 65% line is the model’s real operating point (rank-preserving).

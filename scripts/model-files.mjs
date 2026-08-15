@@ -33,6 +33,19 @@ export function modelUrl(relativePath) {
   return `https://huggingface.co/${MODEL_REPO}/resolve/${MODEL_REVISION}/${relativePath}`;
 }
 
-export function destinationPath(relativePath) {
-  return fileURLToPath(new URL(`${MODEL_ID}/${relativePath}`, MODEL_ROOT));
+export const WEB_HEAD_ID = 'proofmark-webwild-v3';
+export const WEB_HEAD_ASSETS = [
+  {
+    relativePath: 'onnx/model_quantized.onnx',
+    sha256: 'ed17ceb332bef84d0adcc2fa537eef85ed3ac6fb32c30393c326321fbbe54683',
+    required: true
+  }
+];
+
+export function destinationPath(relativePath, modelId = MODEL_ID) {
+  return fileURLToPath(new URL(`${modelId}/${relativePath}`, MODEL_ROOT));
+}
+
+export function webHeadDestinationPath(relativePath) {
+  return destinationPath(relativePath, WEB_HEAD_ID);
 }

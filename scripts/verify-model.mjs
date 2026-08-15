@@ -4,6 +4,8 @@ import { createReadStream, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
   MODEL_ASSETS,
+  WEB_HEAD_ASSETS,
+  WEB_HEAD_ID,
   RUNTIME_DESTINATION_ROOT,
   RUNTIME_FILES,
   RUNTIME_SOURCE_ROOT,
@@ -20,6 +22,18 @@ for (const asset of MODEL_ASSETS) {
     throw new Error(`Checksum mismatch for ${asset.relativePath}. Expected ${asset.sha256}, got ${actual}.`);
   }
   console.log(`ok ${asset.relativePath} (${formatBytes(info.size)}) ${actual}`);
+}
+
+for (const asset of WEB_HEAD_ASSETS) {
+  const path = destinationPath(asset.relativePath, WEB_HEAD_ID);
+  const info = await stat(path);
+  const digest = createHash('sha256');
+  for await (const chunk of createReadStream(path)) digest.update(chunk);
+  const actual = digest.digest('hex');
+  if (actual !== asset.sha256) {
+    throw new Error(`Checksum mismatch for ${WEB_HEAD_ID}/${asset.relativePath}. Expected ${asset.sha256}, got ${actual}.`);
+  }
+  console.log(`ok ${WEB_HEAD_ID}/${asset.relativePath} (${formatBytes(info.size)}) ${actual}`);
 }
 
 await mkdir(fileURLToPath(RUNTIME_DESTINATION_ROOT), { recursive: true });

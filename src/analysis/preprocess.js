@@ -1,4 +1,4 @@
-import { MODEL } from '../shared/constants.js';
+import { MODEL, WEB_HEAD } from '../shared/constants.js';
 
 const SIZE = MODEL.inputSize;
 const PLANE = SIZE * SIZE;
@@ -14,7 +14,7 @@ export async function prepareViews(bitmap, wantNative) {
   return { official, native, width: bitmap.width, height: bitmap.height };
 }
 
-export async function rasterizeView(bitmap, mode) {
+export async function rasterizeView(bitmap, mode, profile = 'clip') {
   const target = canvas || new OffscreenCanvas(SIZE, SIZE);
   const context = target.getContext('2d', { willReadFrequently: true, alpha: false });
   context.imageSmoothingEnabled = true;
@@ -36,7 +36,7 @@ export async function rasterizeView(bitmap, mode) {
     await drawOfficial(context, bitmap);
   }
 
-  return imageDataToNchw(context.getImageData(0, 0, SIZE, SIZE));
+  return imageDataToNchw(context.getImageData(0, 0, SIZE, SIZE), undefined, profile);
 }
 
 async function drawOfficial(context, bitmap) {
@@ -57,10 +57,12 @@ async function drawOfficial(context, bitmap) {
   if (source !== bitmap) source.close();
 }
 
-export function imageDataToNchw(imageData, out = new Float32Array(3 * PLANE)) {
+export function imageDataToNchw(imageData, out = new Float32Array(3 * PLANE), profile = 'clip') {
   const { data } = imageData;
-  const [meanR, meanG, meanB] = MODEL.mean;
-  const [stdR, stdG, stdB] = MODEL.std;
+  const mean = profile === 'imagenet' ? WEB_HEAD.mean : MODEL.mean;
+  const std = profile === 'imagenet' ? WEB_HEAD.std : MODEL.std;
+  const [meanR, meanG, meanB] = mean;
+  const [stdR, stdG, stdB] = std;
   for (let i = 0; i < PLANE; i += 1) {
     const offset = i * 4;
     out[i] = (data[offset] / 255 - meanR) / stdR;

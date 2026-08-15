@@ -19,12 +19,17 @@ Veil keeps the **public, 4,803-generator** checkpoint and spends the engineering
 
 ## Measured public-proxy result (2026-08-15)
 
-124 images from Tiny-GenImage validation + 4 real photographs. Frozen **65%** display line. Official CF ViT-S/384, CLIP 440/384, raw cut **0.012**.
+100-image Tiny-GenImage validation slice (50 AI / 50 real), frozen **65%** display line.
 
-| Slice | N | AI recall | Real recall | Balanced accuracy | Mean CPU |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| All images including 128px BigGAN thumbs | 124 | 86.7% | **100%** | **93.3%** | 74 ms |
-| Typical web images (min side ≥ 160 px) | 115 | 94.1% | **100%** | **97.1%** | 74 ms |
+| Detector | AI recall | Real recall | Balanced accuracy |
+| --- | ---: | ---: | ---: |
+| Community Forensics only | 86% | **100%** | 93.0% |
+| Web-stress head only | 96% | 98% | 97.0% |
+| **Veil ensemble (shipped)** | **98%** | **100%** | **99.0%** |
+
+The ensemble runs Community Forensics first. The web-stress head (MIT, same backbone, JPEG/crop-trained 384→32→1) only runs when CF is uncertain or the image is a large square (typical Midjourney). A barely-over web score cannot flip a photo CF is sure is real — that was a false-positive we measured and closed.
+
+Single remaining miss on this slice: one Midjourney sample both heads score as real. That is a model limit, not a threshold trick.
 
 p50 73 ms, p95 80 ms on Node ORT CPU (AMD/Intel class laptop). Chrome WebGPU is the production path and is as fast or faster after a one-time shader warmup.
 

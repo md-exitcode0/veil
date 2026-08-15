@@ -1,15 +1,17 @@
 import * as ort from 'onnxruntime-web/webgpu';
-import { MESSAGE, MODEL, UNCERTAIN_HIGH, UNCERTAIN_LOW } from '../shared/constants.js';
-import { calibrateDecisionScore, sigmoid } from '../analysis/calibrate.js';
-import { computePixelSignals, fuseEvidence, inspectEncodedImage } from '../analysis/forensics.js';
-import { downscaleForPixels, rasterizeView } from '../analysis/preprocess.js';
+import { MESSAGE, MODEL, WEB_HEAD } from '../shared/constants.js';
+import { sigmoid } from '../analysis/calibrate.js';
+import { inspectEncodedImage } from '../analysis/forensics.js';
+import { fuseModelScores, shouldRunWebHead } from '../analysis/ensemble.js';
+import { rasterizeView } from '../analysis/preprocess.js';
 
 const WASM_DIR = chrome.runtime.getURL('wasm/');
 const FP32_URL = chrome.runtime.getURL(`models/${MODEL.id}/${MODEL.fp32File}`);
 const INT8_URL = chrome.runtime.getURL(`models/${MODEL.id}/${MODEL.int8File}`);
+const WEB_URL = chrome.runtime.getURL(`models/${WEB_HEAD.id}/${WEB_HEAD.weightFile}`);
 const SHAPE = [1, 3, MODEL.inputSize, MODEL.inputSize];
 
-let sessionPromise;
+let enginePromise;
 let reusedTensor;
 let runQueue = Promise.resolve();
 let modelState = { state: 'cold', backend: 'none', precision: null, error: null };
@@ -24,7 +26,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
   if (message.type === MESSAGE.WARM_MODEL) {
-    getSession().then(() => sendResponse({ ok: true, ...modelState })).catch((error) => {
+    getEngine().then(() => sendResponse({ ok: true, ...modelState })).catch((error) => {
       sendResponse({ ok: false, ...modelState, error: humanizeError(error) });
     });
     return true;
@@ -48,140 +50,146 @@ function enqueue(work) {
   return run;
 }
 
-async function getSession() {
-  if (!sessionPromise) {
+async function getEngine() {
+  if (!enginePromise) {
     modelState = { state: 'loading', backend: 'none', precision: null, error: null };
-    sessionPromise = createSession().catch((error) => {
-      sessionPromise = undefined;
+    enginePromise = createEngine().catch((error) => {
+      enginePromise = undefined;
       modelState = { state: 'error', backend: 'none', precision: null, error: humanizeError(error) };
       throw error;
     });
   }
-  return sessionPromise;
+  return enginePromise;
 }
 
-async function createSession() {
-  const attempts = [
+async function createOnnx(url, providers) {
+  return ort.InferenceSession.create(url, {
+    executionProviders: providers,
+    graphOptimizationLevel: 'all',
+    enableMemPattern: true,
+    executionMode: 'sequential'
+  });
+}
+
+async function createEngine() {
+  reusedTensor = new ort.Tensor('float32', new Float32Array(3 * MODEL.inputSize * MODEL.inputSize), SHAPE);
+
+  const cfAttempts = [
     { url: FP32_URL, providers: ['webgpu'], backend: 'WebGPU', precision: 'fp32' },
     { url: INT8_URL, providers: ['wasm'], backend: 'WebAssembly', precision: 'int8' },
     { url: FP32_URL, providers: ['wasm'], backend: 'WebAssembly', precision: 'fp32' }
   ];
 
   let lastError;
-  for (const attempt of attempts) {
+  let cfSession;
+  let backend = 'none';
+  let precision = null;
+  for (const attempt of cfAttempts) {
     try {
-      const session = await ort.InferenceSession.create(attempt.url, {
-        executionProviders: attempt.providers,
-        graphOptimizationLevel: 'all',
-        enableMemPattern: true,
-        executionMode: 'sequential'
-      });
-      reusedTensor = new ort.Tensor('float32', new Float32Array(3 * MODEL.inputSize * MODEL.inputSize), SHAPE);
-      modelState = {
-        state: 'ready',
-        backend: attempt.backend,
-        precision: attempt.precision,
-        error: null,
-        inputName: session.inputNames[0],
-        outputName: session.outputNames[0]
-      };
-      await infer(session, reusedTensor.data);
-      return session;
+      cfSession = await createOnnx(attempt.url, attempt.providers);
+      backend = attempt.backend;
+      precision = attempt.precision;
+      break;
     } catch (error) {
       lastError = error;
     }
   }
-  throw lastError || new Error('No usable ONNX backend.');
+  if (!cfSession) throw lastError || new Error('No usable ONNX backend.');
+
+  let webSession = null;
+  try {
+    webSession = await createOnnx(WEB_URL, backend === 'WebGPU' ? ['webgpu'] : ['wasm']);
+  } catch {
+    try {
+      webSession = await createOnnx(WEB_URL, ['wasm']);
+    } catch {
+      webSession = null;
+    }
+  }
+
+  modelState = {
+    state: 'ready',
+    backend,
+    precision,
+    webHead: Boolean(webSession),
+    error: null
+  };
+
+  await infer(cfSession, reusedTensor.data);
+  if (webSession) await infer(webSession, reusedTensor.data);
+  return { cfSession, webSession };
 }
 
-async function analyzeImage({ source, fallbackDataUrl, requestId, dualView = true }) {
+async function analyzeImage({ source, fallbackDataUrl, requestId }) {
   const startedAt = performance.now();
   const { buffer, mimeType } = await readImageBytes(source, fallbackDataUrl);
   const encoded = inspectEncodedImage(buffer, mimeType);
 
   if (encoded.evidence.length > 0) {
-    const score = calibrateDecisionScore(
-      0.985,
-      MODEL.calibration.rawThreshold,
-      MODEL.calibration.displayThreshold
-    );
-    return {
-      ok: true,
+    const fused = fuseModelScores({ cfRaw: null, webRaw: null, encoded });
+    return finish({
       requestId,
-      score,
-      modelScore: 0.985,
-      officialScore: null,
+      startedAt,
+      fused,
+      cfRaw: null,
+      webRaw: null,
       viewsUsed: 0,
       skippedModel: true,
-      model: MODEL.id,
-      backend: modelState.backend,
-      precision: modelState.precision,
-      format: encoded.format,
-      dimensions: { width: 0, height: 0 },
-      evidence: [...encoded.evidence, ...encoded.watermarks, ...encoded.provenance],
-      watermarks: encoded.watermarks,
-      provenance: encoded.provenance,
-      elapsedMs: Math.round(performance.now() - startedAt)
-    };
+      encoded,
+      width: 0,
+      height: 0
+    });
   }
 
   const blob = new Blob([buffer], { type: mimeType || 'image/jpeg' });
   const bitmap = await createImageBitmap(blob);
   const width = bitmap.width;
   const height = bitmap.height;
-  const session = await getSession();
-  const minSide = Math.min(width, height);
-  const fastGpu = modelState.backend === 'WebGPU';
+  const { cfSession, webSession } = await getEngine();
 
-  const official = await rasterizeView(bitmap, 'official');
-  const officialScore = await infer(session, official);
-  let modelScore = officialScore;
+  const official = await rasterizeView(bitmap, 'official', 'clip');
+  const cfRaw = await infer(cfSession, official);
   let viewsUsed = 1;
+  let webRaw = null;
 
-  const uncertain = officialScore > UNCERTAIN_LOW && officialScore < UNCERTAIN_HIGH;
-  const maybeMissedAi = officialScore < 0.08 && minSide >= 384;
-  const wantSecond = dualView && minSide >= MODEL.inputSize && (uncertain || (fastGpu && maybeMissedAi));
-
-  if (wantSecond) {
-    const native = await rasterizeView(bitmap, 'native');
-    const nativeScore = await infer(session, native);
-    modelScore = (officialScore + nativeScore) / 2;
-    viewsUsed = 2;
-    if (fastGpu && maybeMissedAi && modelScore < 0.08) {
-      const flipped = await rasterizeView(bitmap, 'flip');
-      const flipScore = await infer(session, flipped);
-      modelScore = (officialScore + nativeScore + flipScore) / 3;
-      viewsUsed = 3;
-    }
+  if (webSession && shouldRunWebHead(cfRaw, width, height)) {
+    const webTensor = await rasterizeView(bitmap, 'official', 'imagenet');
+    webRaw = await infer(webSession, webTensor);
+    viewsUsed += 1;
   }
 
-  let pixel = { adjustment: 0, signals: [] };
-  if (uncertain) {
-    pixel = computePixelSignals(await downscaleForPixels(bitmap));
-  }
   bitmap.close();
+  const fused = fuseModelScores({ cfRaw, webRaw, encoded });
+  return finish({
+    requestId,
+    startedAt,
+    fused,
+    cfRaw,
+    webRaw,
+    viewsUsed,
+    skippedModel: false,
+    encoded,
+    width,
+    height
+  });
+}
 
-  const uncalibrated = fuseEvidence(modelScore, encoded, pixel);
-  const score = calibrateDecisionScore(
-    uncalibrated,
-    MODEL.calibration.rawThreshold,
-    MODEL.calibration.displayThreshold
-  );
-
+function finish({ requestId, startedAt, fused, cfRaw, webRaw, viewsUsed, skippedModel, encoded, width, height }) {
   return {
     ok: true,
     requestId,
-    score,
-    modelScore,
-    officialScore,
+    score: fused.score,
+    modelScore: cfRaw,
+    webScore: webRaw,
+    fuseSource: fused.source,
     viewsUsed,
-    skippedModel: false,
-    model: MODEL.id,
+    skippedModel,
+    model: WEB_HEAD.id && webRaw != null ? `${MODEL.id}+${WEB_HEAD.id}` : MODEL.id,
     backend: modelState.backend,
     precision: modelState.precision,
     format: encoded.format,
     dimensions: { width, height },
-    evidence: [...encoded.evidence, ...encoded.watermarks, ...encoded.provenance, ...pixel.signals],
+    evidence: [...encoded.evidence, ...encoded.watermarks, ...encoded.provenance],
     watermarks: encoded.watermarks,
     provenance: encoded.provenance,
     elapsedMs: Math.round(performance.now() - startedAt)

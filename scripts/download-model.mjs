@@ -9,6 +9,8 @@ import {
   MODEL_ID,
   MODEL_REPO,
   MODEL_REVISION,
+  WEB_HEAD_ASSETS,
+  WEB_HEAD_ID,
   RUNTIME_DESTINATION_ROOT,
   RUNTIME_FILES,
   RUNTIME_SOURCE_ROOT,
@@ -32,6 +34,32 @@ for (const asset of MODEL_ASSETS) {
   const digest = await sha256File(destination);
   if (digest !== asset.sha256) {
     throw new Error(`Checksum mismatch for ${asset.relativePath}. Expected ${asset.sha256}, got ${digest}.`);
+  }
+  console.log(`sha256   ${digest}`);
+}
+
+const localWebHead = '/tmp/proofmark/public/models/Proofmark/proofmark-webwild-v3/onnx/model_quantized.onnx';
+await mkdir(fileURLToPath(new URL(`${WEB_HEAD_ID}/onnx/`, new URL('../public/models/', import.meta.url))), { recursive: true });
+for (const asset of WEB_HEAD_ASSETS) {
+  const destination = destinationPath(asset.relativePath, WEB_HEAD_ID);
+  if (await fileLooksComplete(destination, asset.sha256)) {
+    console.log(`cached   ${WEB_HEAD_ID}/${asset.relativePath}`);
+    continue;
+  }
+  await mkdir(dirname(destination), { recursive: true });
+  if (existsSync(localWebHead)) {
+    console.log(`copy     ${WEB_HEAD_ID}/${asset.relativePath}`);
+    await copyFile(localWebHead, destination);
+  } else {
+    const url = `https://github.com/Dyno-man/Dino-ImageGen-Ext/raw/main/public/models/Proofmark/proofmark-webwild-v3/${asset.relativePath}`;
+    console.log(`download ${WEB_HEAD_ID}/${asset.relativePath}`);
+    const response = await fetch(url, { redirect: 'follow' });
+    if (!response.ok) throw new Error(`Failed to download web head: HTTP ${response.status}`);
+    await pipeline(response.body, createWriteStream(destination));
+  }
+  const digest = await sha256File(destination);
+  if (digest !== asset.sha256) {
+    throw new Error(`Checksum mismatch for web head. Expected ${asset.sha256}, got ${digest}.`);
   }
   console.log(`sha256   ${digest}`);
 }
