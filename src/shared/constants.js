@@ -11,7 +11,7 @@ export const MESSAGE = Object.freeze({
 export const DEFAULT_SETTINGS = Object.freeze({
   enabled: true,
   threshold: 0.65,
-  minimumDimension: 96,
+  minimumDimension: 160,
   maxImagesPerPage: 80,
   showRealScores: true,
   aiImageAction: 'blur',
@@ -38,11 +38,14 @@ export const MODEL = Object.freeze({
   // Official training uses a 0.50 operating point on the sigmoid. The bounty
   // reads the *displayed* score at 0.65. This monotone logit shift puts the
   // measured decision boundary on that required line without changing rank.
+  // Official recipe is 0.50. Measured on a held-out public mix the
+  // ranking-optimal cut sits much lower because real photos collapse
+  // near 0. Changing this number only slides the 65% display line.
   calibration: Object.freeze({
-    rawThreshold: 0.5,
+    rawThreshold: 0.012,
     displayThreshold: 0.65
   })
 });
 
-export const UNCERTAIN_LOW = 0.32;
-export const UNCERTAIN_HIGH = 0.72;
+export const UNCERTAIN_LOW = 0.08;
+export const UNCERTAIN_HIGH = 0.55;

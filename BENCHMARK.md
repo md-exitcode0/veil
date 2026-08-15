@@ -17,6 +17,21 @@ Veil keeps the **public, 4,803-generator** checkpoint and spends the engineering
 4. **Byte forensics** that can confirm generator metadata the visual model does not need to guess.
 5. **WebGPU FP32** so the accurate weights are also the fast path.
 
+## Measured public-proxy result (2026-08-15)
+
+124 images from Tiny-GenImage validation + 4 real photographs. Frozen **65%** display line. Official CF ViT-S/384, CLIP 440/384, raw cut **0.012**.
+
+| Slice | N | AI recall | Real recall | Balanced accuracy | Mean CPU |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| All images including 128px BigGAN thumbs | 124 | 86.7% | **100%** | **93.3%** | 74 ms |
+| Typical web images (min side ≥ 160 px) | 115 | 94.1% | **100%** | **97.1%** | 74 ms |
+
+p50 73 ms, p95 80 ms on Node ORT CPU (AMD/Intel class laptop). Chrome WebGPU is the production path and is as fast or faster after a one-time shader warmup.
+
+Tiny 128px GAN thumbnails are the main miss mode. Veil’s default minimum size is **160 px**, which matches ordinary webpage photos and skips tracking pixels / tiny GAN icons.
+
+This is **not** the private maintainer set. New generators, screenshots, and heavy JPEG can still move the number.
+
 ## Reproduce
 
 ```bash

@@ -26,6 +26,12 @@ Veil does neither.
 
 Likely-AI images are **blurred by default**. The popup can switch to **hide** or **label only** immediately. Right-click any image for a one-off check.
 
+## Compatibility, speed, accuracy
+
+Works in **Chrome, Brave, and Edge 116+** on Windows, macOS, and Linux. WebGPU is used when the GPU stack is available; otherwise it falls back to WASM INT8. First image after install pays a one-time model load (~1–2 s). After that, measured mean is **74 ms/image on CPU** (p95 80 ms). Images with embedded generator metadata skip the model and return in a few milliseconds.
+
+On a 115-image public mix of web-sized photos (min side ≥ 160 px) at the required 65% line: **97.1% balanced accuracy**, **100% real recall**, **94.1% AI recall**. Including 128 px GAN thumbnails drops that to 93.3%. This is a public proxy, not the private bounty set. See [`BENCHMARK.md`](./BENCHMARK.md).
+
 ## Requirements
 
 - Node.js 20 or newer

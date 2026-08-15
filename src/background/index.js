@@ -9,11 +9,13 @@ let analyzing = 0;
 
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   ensureContextMenu();
+  warmSoon();
   if (reason === 'install') chrome.runtime.openOptionsPage();
 });
 
 chrome.runtime.onStartup.addListener(() => {
   ensureContextMenu();
+  warmSoon();
 });
 
 ensureContextMenu();
@@ -118,6 +120,12 @@ async function ensureOffscreenDocument() {
     });
   }
   await creatingOffscreen;
+}
+
+function warmSoon() {
+  setTimeout(() => {
+    forwardToOffscreen({ type: MESSAGE.WARM_MODEL }).catch(() => {});
+  }, 400);
 }
 
 function updateBadge(tabId) {

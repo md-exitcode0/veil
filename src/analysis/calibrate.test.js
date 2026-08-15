@@ -20,4 +20,10 @@ describe('calibrateDecisionScore', () => {
     expect(calibrateDecisionScore(0)).toBeGreaterThan(0);
     expect(calibrateDecisionScore(1)).toBeLessThan(1);
   });
+
+  it('keeps very small raw scores distinct instead of flooring them', () => {
+    const a = calibrateDecisionScore(0.00002, 0.012, 0.65);
+    const b = calibrateDecisionScore(0.0008, 0.012, 0.65);
+    expect(b).toBeGreaterThan(a);
+  });
 });

@@ -8,6 +8,7 @@ describe('sanitizeSettings', () => {
     expect(settings.threshold).toBe(0.65);
     expect(settings.aiImageAction).toBe('blur');
     expect(settings.dualView).toBe(true);
+    expect(settings.minimumDimension).toBe(160);
   });
 
   it('clamps the bounty threshold into a legal range', () => {

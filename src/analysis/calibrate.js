@@ -19,7 +19,7 @@ export function sigmoid(value) {
  * actual operating point of the Community Forensics sigmoid, not a raw cutoff.
  */
 export function calibrateDecisionScore(score, rawThreshold = 0.5, displayThreshold = 0.65) {
-  const bounded = clamp(Number(score) || 0.5, 0.001, 0.999);
+  const bounded = clamp(Number(score) || 0.5, 1e-6, 1 - 1e-6);
   return clamp(
     sigmoid(logit(bounded) - logit(rawThreshold) + logit(displayThreshold)),
     0.001,

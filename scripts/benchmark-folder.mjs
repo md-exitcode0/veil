@@ -103,7 +103,11 @@ async function scoreFile(file, label) {
   };
   const outputs = await session.run(feeds);
   const modelScore = sigmoid(Number(outputs[session.outputNames[0]].data[0]));
-  const score = calibrateDecisionScore(fuseEvidence(modelScore, encoded, { adjustment: 0 }));
+  const score = calibrateDecisionScore(
+    fuseEvidence(modelScore, encoded, { adjustment: 0 }),
+    MODEL.calibration.rawThreshold,
+    MODEL.calibration.displayThreshold
+  );
   return {
     file,
     label,

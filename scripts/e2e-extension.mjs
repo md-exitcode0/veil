@@ -74,7 +74,11 @@ try {
   }
   await page.waitForTimeout(8000);
   const snapshot = await page.evaluate(() => ({
-    badges: [...document.querySelectorAll('.veil-badge')].map((el) => el.className + ' ' + el.textContent),
+    badges: [...document.querySelectorAll('.veil-badge')].map((el) => ({
+      text: el.textContent.replace(/\s+/g, ' ').trim(),
+      ms: Number(el.dataset.veilElapsed || 0),
+      title: el.title
+    })),
     blurred: document.querySelectorAll('img[data-veil-treatment="blur"]').length,
     hidden: document.querySelectorAll('img[data-veil-treatment="hide"]').length,
     overlay: Boolean(document.querySelector('#veil-overlay-layer'))

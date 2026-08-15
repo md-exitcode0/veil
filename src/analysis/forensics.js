@@ -151,12 +151,12 @@ export function computePixelSignals(imageData) {
 }
 
 export function fuseEvidence(modelAiScore, encoded, pixel) {
-  let score = clamp(Number(modelAiScore) || 0.5, 0.001, 0.999);
+  let score = clamp(Number(modelAiScore) || 0.5, 1e-6, 1 - 1e-6);
   const pixelAdj = pixel?.adjustment || 0;
   if (pixelAdj) score = sigmoid(logit(score) + pixelAdj * 3);
 
   if (encoded.evidence.length > 0) score = Math.max(score, 0.985);
-  return clamp(score, 0.001, 0.999);
+  return clamp(score, 1e-6, 1 - 1e-6);
 }
 
 function detectFormat(bytes, mimeType) {

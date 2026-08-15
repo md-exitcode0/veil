@@ -13,7 +13,7 @@ function sanitizeSettings(value = {}) {
   return {
     enabled: value.enabled !== false,
     threshold: number(value.threshold, 0.5, 0.95, 0.65),
-    minimumDimension: number(value.minimumDimension, 48, 512, 96),
+    minimumDimension: number(value.minimumDimension, 48, 512, 160),
     maxImagesPerPage: Math.round(number(value.maxImagesPerPage, 5, 200, 80)),
     showRealScores: value.showRealScores !== false,
     aiImageAction: ['blur', 'hide', 'label'].includes(value.aiImageAction) ? value.aiImageAction : 'blur',
@@ -41,7 +41,7 @@ let settings = sanitizeSettings();
 let requestSequence = 0;
 let updateFrame;
 let inFlight = 0;
-const MAX_IN_FLIGHT = 3;
+const MAX_IN_FLIGHT = 2;
 const pending = [];
 
 const overlayLayer = document.createElement('div');
@@ -244,6 +244,8 @@ function renderRecord(record) {
     <span class="veil-badge__mark">${isAi ? 'AI' : 'OK'}</span>
     <span class="veil-badge__score">${Math.round(score * 100)}%</span>
   `;
+  record.badge.title = `${Math.round(score * 100)}% AI · ${record.result.elapsedMs} ms · ${record.result.backend || ''}`;
+  record.badge.dataset.veilElapsed = String(record.result.elapsedMs || 0);
   record.badge.setAttribute(
     'aria-label',
     `${Math.round(score * 100)} percent probability this image is AI-generated. Open details.`

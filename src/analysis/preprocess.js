@@ -1,14 +1,11 @@
 import { MODEL } from '../shared/constants.js';
 
-/**
- * Two complementary 384×384 views of the same bitmap.
- *
- * official  — paper recipe: shortest edge → 440, center-crop 384
- * native    — center-crop at source aspect, then scale to 384
- *
- * Averaging the two is only done when the first score is uncertain. That
- * keeps the common case to a single forward pass.
- */
+const SIZE = MODEL.inputSize;
+const PLANE = SIZE * SIZE;
+
+const canvas = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(SIZE, SIZE) : null;
+const tensorScratch = new Float32Array(3 * PLANE);
+
 export async function prepareViews(bitmap, wantNative) {
   const official = await rasterizeView(bitmap, 'official');
   const native = wantNative && Math.min(bitmap.width, bitmap.height) >= MODEL.inputSize
@@ -18,63 +15,72 @@ export async function prepareViews(bitmap, wantNative) {
 }
 
 export async function rasterizeView(bitmap, mode) {
-  const size = MODEL.inputSize;
-  const canvas = new OffscreenCanvas(size, size);
-  const context = canvas.getContext('2d', { willReadFrequently: true, alpha: false });
+  const target = canvas || new OffscreenCanvas(SIZE, SIZE);
+  const context = target.getContext('2d', { willReadFrequently: true, alpha: false });
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = 'high';
+  context.setTransform(1, 0, 0, 1, 0, 0);
 
   if (mode === 'native') {
     const crop = Math.min(bitmap.width, bitmap.height);
     const sx = Math.floor((bitmap.width - crop) / 2);
     const sy = Math.floor((bitmap.height - crop) / 2);
-    context.drawImage(bitmap, sx, sy, crop, crop, 0, 0, size, size);
+    context.drawImage(bitmap, sx, sy, crop, crop, 0, 0, SIZE, SIZE);
+  } else if (mode === 'flip') {
+    context.setTransform(-1, 0, 0, 1, SIZE, 0);
+    await drawOfficial(context, bitmap);
+    context.setTransform(1, 0, 0, 1, 0, 0);
   } else if (Math.min(bitmap.width, bitmap.height) < MODEL.resizeShortest) {
-    // Tiny sources: stretch to 384². Upscaling to 440 and then cropping
-    // invents a border the model never saw in training at that scale.
-    context.drawImage(bitmap, 0, 0, size, size);
+    context.drawImage(bitmap, 0, 0, SIZE, SIZE);
   } else {
-    const scale = MODEL.resizeShortest / Math.min(bitmap.width, bitmap.height);
-    const resizedWidth = Math.max(size, Math.round(bitmap.width * scale));
-    const resizedHeight = Math.max(size, Math.round(bitmap.height * scale));
-    let source = bitmap;
-    if (resizedWidth !== bitmap.width || resizedHeight !== bitmap.height) {
-      source = await createImageBitmap(bitmap, {
-        resizeWidth: resizedWidth,
-        resizeHeight: resizedHeight,
-        resizeQuality: 'high'
-      });
-    }
-    const sx = Math.floor((source.width - size) / 2);
-    const sy = Math.floor((source.height - size) / 2);
-    context.drawImage(source, sx, sy, size, size, 0, 0, size, size);
-    if (source !== bitmap) source.close();
+    await drawOfficial(context, bitmap);
   }
 
-  return imageDataToNchw(context.getImageData(0, 0, size, size));
+  return imageDataToNchw(context.getImageData(0, 0, SIZE, SIZE));
 }
 
-export function imageDataToNchw(imageData) {
-  const { data, width, height } = imageData;
-  const plane = width * height;
-  const tensor = new Float32Array(3 * plane);
+async function drawOfficial(context, bitmap) {
+  const scale = MODEL.resizeShortest / Math.min(bitmap.width, bitmap.height);
+  const resizedWidth = Math.max(SIZE, Math.round(bitmap.width * scale));
+  const resizedHeight = Math.max(SIZE, Math.round(bitmap.height * scale));
+  let source = bitmap;
+  if (resizedWidth !== bitmap.width || resizedHeight !== bitmap.height) {
+    source = await createImageBitmap(bitmap, {
+      resizeWidth: resizedWidth,
+      resizeHeight: resizedHeight,
+      resizeQuality: 'high'
+    });
+  }
+  const sx = Math.floor((source.width - SIZE) / 2);
+  const sy = Math.floor((source.height - SIZE) / 2);
+  context.drawImage(source, sx, sy, SIZE, SIZE, 0, 0, SIZE, SIZE);
+  if (source !== bitmap) source.close();
+}
+
+export function imageDataToNchw(imageData, out = new Float32Array(3 * PLANE)) {
+  const { data } = imageData;
   const [meanR, meanG, meanB] = MODEL.mean;
   const [stdR, stdG, stdB] = MODEL.std;
-  for (let i = 0; i < plane; i += 1) {
+  for (let i = 0; i < PLANE; i += 1) {
     const offset = i * 4;
-    tensor[i] = (data[offset] / 255 - meanR) / stdR;
-    tensor[plane + i] = (data[offset + 1] / 255 - meanG) / stdG;
-    tensor[2 * plane + i] = (data[offset + 2] / 255 - meanB) / stdB;
+    out[i] = (data[offset] / 255 - meanR) / stdR;
+    out[PLANE + i] = (data[offset + 1] / 255 - meanG) / stdG;
+    out[2 * PLANE + i] = (data[offset + 2] / 255 - meanB) / stdB;
   }
-  return tensor;
+  return out;
 }
 
-export async function downscaleForPixels(bitmap, maxEdge = 192) {
+export function copyTensor(source) {
+  tensorScratch.set(source);
+  return tensorScratch;
+}
+
+export async function downscaleForPixels(bitmap, maxEdge = 160) {
   const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
   const width = Math.max(8, Math.round(bitmap.width * scale));
   const height = Math.max(8, Math.round(bitmap.height * scale));
-  const canvas = new OffscreenCanvas(width, height);
-  const context = canvas.getContext('2d', { willReadFrequently: true });
+  const small = new OffscreenCanvas(width, height);
+  const context = small.getContext('2d', { willReadFrequently: true });
   context.drawImage(bitmap, 0, 0, width, height);
   return context.getImageData(0, 0, width, height);
 }
