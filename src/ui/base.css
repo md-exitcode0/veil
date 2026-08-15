@@ -1,0 +1,111 @@
+:root {
+  --bg: #0c0d10;
+  --paper: #14161c;
+  --paper-2: #1a1d25;
+  --line: #262a33;
+  --ink: #ece8df;
+  --ink-soft: #8b8790;
+  --amber: #f0b429;
+  --amber-dim: #8a6a12;
+  --ai: #ff5d4a;
+  --ai-soft: rgba(255, 93, 74, 0.14);
+  --real: #3dcc9a;
+  --real-soft: rgba(61, 204, 154, 0.14);
+  --shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+body {
+  font: 500 13px/1.45 ui-sans-serif, "Segoe UI", system-ui, sans-serif;
+}
+
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 750 13px/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.wordmark__mark {
+  width: 14px;
+  height: 18px;
+  border: 1.5px solid var(--amber);
+  border-radius: 99px;
+  position: relative;
+}
+.wordmark__mark::after {
+  content: "";
+  position: absolute;
+  inset: 3px 5px;
+  background: var(--amber);
+  border-radius: 99px;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--amber);
+  font: 800 10px/1.2 ui-monospace, "SFMono-Regular", monospace;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.muted { color: var(--ink-soft); }
+
+.button {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--amber);
+  color: #14120b;
+  font-weight: 750;
+}
+.button:hover { filter: brightness(1.05); }
+.button:disabled { opacity: 0.55; cursor: default; }
+.button--quiet {
+  background: var(--paper-2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 22px;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch span {
+  position: absolute;
+  inset: 0;
+  background: #2a2e38;
+  border-radius: 99px;
+  transition: 0.15s;
+}
+.switch span::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: 3px;
+  top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: 0.15s;
+}
+.switch input:checked + span { background: var(--amber); }
+.switch input:checked + span::after { transform: translateX(16px); background: #14120b; }
+
+select, input[type="range"] {
+  accent-color: var(--amber);
+}
+select {
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 8px;
+}

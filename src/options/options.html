@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Veil setup</title>
+  </head>
+  <body>
+    <div class="options-shell">
+      <header class="topbar">
+        <div class="wordmark"><span class="wordmark__mark" aria-hidden="true"></span><span>Veil</span></div>
+        <span class="topbar__privacy"><i></i> Browser-local by design</span>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div class="hero__copy">
+            <p class="eyebrow">Setup & controls</p>
+            <h1>A fast authenticity layer that never leaves Chrome.</h1>
+            <p>Veil scores visible images with the official Community Forensics ViT on WebGPU (WASM fallback), then checks the file bytes for generator traces, C2PA labels, and known watermark markers.</p>
+            <div class="hero__actions">
+              <button id="warm-model" class="button" type="button">Run local readiness check</button>
+              <span id="model-status" class="model-status"><i></i> Not checked yet</span>
+            </div>
+          </div>
+          <div class="lens" aria-label="Illustration of the sixty-five percent AI threshold">
+            <div class="lens__field">
+              <span>real</span><b>65</b><span>AI</span>
+            </div>
+            <div class="lens__line"></div>
+            <p>Required decision line</p>
+          </div>
+        </section>
+
+        <div class="content-grid">
+          <section class="panel settings-panel">
+            <div class="panel__heading">
+              <div><p class="eyebrow">Behavior</p><h2>Scanning controls</h2></div>
+              <label class="switch"><input id="enabled" type="checkbox"><span></span></label>
+            </div>
+            <label class="field">
+              <span><strong>AI decision threshold</strong><small>Images at or above this score are flagged.</small></span>
+              <output id="threshold-output">65%</output>
+              <input id="threshold" type="range" min="50" max="95" step="1" value="65">
+            </label>
+            <label class="field field--row">
+              <span><strong>Minimum image size</strong><small>Skip tiny icons, avatars, and tracking pixels.</small></span>
+              <select id="minimum-dimension">
+                <option value="64">64 px</option>
+                <option value="96">96 px</option>
+                <option value="128">128 px</option>
+                <option value="192">192 px</option>
+              </select>
+            </label>
+            <label class="field field--row">
+              <span><strong>Images per page</strong><small>Caps work on infinite feeds.</small></span>
+              <select id="max-images">
+                <option value="20">20</option>
+                <option value="40">40</option>
+                <option value="80">80</option>
+                <option value="120">120</option>
+              </select>
+            </label>
+            <label class="field field--row">
+              <span><strong>When an image crosses the AI line</strong><small>Blur by default, hide it, or keep the label only.</small></span>
+              <select id="ai-image-action">
+                <option value="blur">Blur image</option>
+                <option value="hide">Hide image</option>
+                <option value="label">Label only</option>
+              </select>
+            </label>
+            <label class="field field--row">
+              <span><strong>Second view on uncertain scores</strong><small>A native center-crop pass only when the first score is close to the line.</small></span>
+              <label class="switch"><input id="dual-view" type="checkbox"><span></span></label>
+            </label>
+            <label class="field field--row">
+              <span><strong>Show scores below the line</strong><small>Keep a green tag on likely-real images.</small></span>
+              <label class="switch"><input id="show-real-scores" type="checkbox"><span></span></label>
+            </label>
+            <p id="saved" class="saved" aria-live="polite"></p>
+          </section>
+
+          <aside class="panel evidence-panel">
+            <p class="eyebrow">What each check reads</p>
+            <h2>Three local signal paths</h2>
+            <ol class="signal-list">
+              <li><b>01</b><div><strong>Learned visual fingerprints</strong><p>Official Community Forensics ViT-S/384, CLIP-normalized, WebGPU first.</p></div></li>
+              <li><b>02</b><div><strong>Generator traces</strong><p>PNG, JPEG, WebP, and AVIF bytes are scanned for prompts, workflows, and generator names.</p></div></li>
+              <li><b>03</b><div><strong>Provenance clues</strong><p>C2PA, Content Credentials, SynthID labels, and known watermark markers — surfaced, not “decoded.”</p></div></li>
+            </ol>
+          </aside>
+        </div>
+
+        <section class="model-strip">
+          <div><p class="eyebrow">Bundled model</p><strong>Community Forensics ViT-S/384 · FP32 + INT8</strong></div>
+          <dl>
+            <div><dt>Primary runtime</dt><dd>WebGPU</dd></div>
+            <div><dt>Fallback</dt><dd>WASM INT8</dd></div>
+            <div><dt>Network after setup</dt><dd>None</dd></div>
+            <div><dt>License</dt><dd>MIT</dd></div>
+          </dl>
+        </section>
+
+        <section class="caveat">
+          <strong>A score is a lead, not a verdict.</strong>
+          <p>Detectors miss newer generators and can fire on screenshots, heavy edits, and AI-upscaled photos. Treat embedded generator metadata as stronger evidence than a visual score, and use source context for consequential decisions.</p>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="./options.js"></script>
+  </body>
+</html>

@@ -1,0 +1,34 @@
+{
+  "name": "veil-local-ai-image-detector",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Veil — a fast, fully local Manifest V3 Chrome extension that scores webpage images for AI generation and blurs or hides likely-AI images. No cloud, no API, no local server.",
+  "license": "MIT",
+  "scripts": {
+    "model:download": "node scripts/download-model.mjs",
+    "model:verify": "node scripts/verify-model.mjs",
+    "icons": "python3 scripts/generate-icons.py",
+    "dev": "vite",
+    "build": "npm run model:verify && vite build",
+    "build:fresh": "npm run model:download && npm run icons && npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "node scripts/e2e-extension.mjs",
+    "test:policy": "node scripts/check-policy.mjs",
+    "benchmark": "node scripts/benchmark-folder.mjs",
+    "check": "npm test && npm run test:policy && npm run build",
+    "package": "npm run check && node scripts/package-extension.mjs"
+  },
+  "dependencies": {
+    "onnxruntime-web": "1.23.2"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.2.1",
+    "onnxruntime-node": "1.23.2",
+    "playwright-core": "^1.55.0",
+    "sharp": "^0.34.2",
+    "vite": "^7.1.2",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.zip
+.DS_Store
+*.log
+public/wasm/
+public/models/**/*.onnx
+.vite/
+.cache/
+benchmark-local/
