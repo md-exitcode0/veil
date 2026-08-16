@@ -2,59 +2,46 @@ import { MODEL, WEB_HEAD } from '../shared/constants.js';
 
 const SIZE = MODEL.inputSize;
 const PLANE = SIZE * SIZE;
-
 const canvas = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(SIZE, SIZE) : null;
-const tensorScratch = new Float32Array(3 * PLANE);
 
-export async function prepareViews(bitmap, wantNative) {
-  const official = await rasterizeView(bitmap, 'official');
-  const native = wantNative && Math.min(bitmap.width, bitmap.height) >= MODEL.inputSize
-    ? await rasterizeView(bitmap, 'native')
-    : null;
-  return { official, native, width: bitmap.width, height: bitmap.height };
-}
-
+/**
+ * Official geometry without an intermediate 440px bitmap:
+ * crop a SIZE * (short/440) window from the center, scale to 384.
+ * Same crop as "shortest → 440, then center 384".
+ */
 export async function rasterizeView(bitmap, mode, profile = 'clip') {
   const target = canvas || new OffscreenCanvas(SIZE, SIZE);
   const context = target.getContext('2d', { willReadFrequently: true, alpha: false });
   context.imageSmoothingEnabled = true;
-  context.imageSmoothingQuality = 'high';
+  context.imageSmoothingQuality = 'medium';
   context.setTransform(1, 0, 0, 1, 0, 0);
 
+  const width = bitmap.width;
+  const height = bitmap.height;
+  const short = Math.min(width, height);
+
   if (mode === 'native') {
-    const crop = Math.min(bitmap.width, bitmap.height);
-    const sx = Math.floor((bitmap.width - crop) / 2);
-    const sy = Math.floor((bitmap.height - crop) / 2);
-    context.drawImage(bitmap, sx, sy, crop, crop, 0, 0, SIZE, SIZE);
+    const sx = Math.floor((width - short) / 2);
+    const sy = Math.floor((height - short) / 2);
+    context.drawImage(bitmap, sx, sy, short, short, 0, 0, SIZE, SIZE);
   } else if (mode === 'flip') {
     context.setTransform(-1, 0, 0, 1, SIZE, 0);
-    await drawOfficial(context, bitmap);
+    drawOfficial(context, bitmap, width, height, short);
     context.setTransform(1, 0, 0, 1, 0, 0);
-  } else if (Math.min(bitmap.width, bitmap.height) < MODEL.resizeShortest) {
+  } else if (short < MODEL.resizeShortest) {
     context.drawImage(bitmap, 0, 0, SIZE, SIZE);
   } else {
-    await drawOfficial(context, bitmap);
+    drawOfficial(context, bitmap, width, height, short);
   }
 
   return imageDataToNchw(context.getImageData(0, 0, SIZE, SIZE), undefined, profile);
 }
 
-async function drawOfficial(context, bitmap) {
-  const scale = MODEL.resizeShortest / Math.min(bitmap.width, bitmap.height);
-  const resizedWidth = Math.max(SIZE, Math.round(bitmap.width * scale));
-  const resizedHeight = Math.max(SIZE, Math.round(bitmap.height * scale));
-  let source = bitmap;
-  if (resizedWidth !== bitmap.width || resizedHeight !== bitmap.height) {
-    source = await createImageBitmap(bitmap, {
-      resizeWidth: resizedWidth,
-      resizeHeight: resizedHeight,
-      resizeQuality: 'high'
-    });
-  }
-  const sx = Math.floor((source.width - SIZE) / 2);
-  const sy = Math.floor((source.height - SIZE) / 2);
-  context.drawImage(source, sx, sy, SIZE, SIZE, 0, 0, SIZE, SIZE);
-  if (source !== bitmap) source.close();
+function drawOfficial(context, bitmap, width, height, short) {
+  const crop = (SIZE * short) / MODEL.resizeShortest;
+  const sx = (width - crop) / 2;
+  const sy = (height - crop) / 2;
+  context.drawImage(bitmap, sx, sy, crop, crop, 0, 0, SIZE, SIZE);
 }
 
 export function imageDataToNchw(imageData, out = new Float32Array(3 * PLANE), profile = 'clip') {
@@ -70,11 +57,6 @@ export function imageDataToNchw(imageData, out = new Float32Array(3 * PLANE), pr
     out[2 * PLANE + i] = (data[offset + 2] / 255 - meanB) / stdB;
   }
   return out;
-}
-
-export function copyTensor(source) {
-  tensorScratch.set(source);
-  return tensorScratch;
 }
 
 export async function downscaleForPixels(bitmap, maxEdge = 160) {

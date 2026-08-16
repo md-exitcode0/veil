@@ -78,17 +78,20 @@ async function scoreFile(file, label) {
   const meta = await sharp(file).rotate().metadata();
   const width = meta.width || 0;
   const height = meta.height || 0;
-  const scale = MODEL.resizeShortest / Math.min(width, height);
-  const rw = Math.max(MODEL.inputSize, Math.round(width * scale));
-  const rh = Math.max(MODEL.inputSize, Math.round(height * scale));
-  const left = Math.floor((rw - MODEL.inputSize) / 2);
-  const top = Math.floor((rh - MODEL.inputSize) / 2);
+  const short = Math.min(width, height);
+  const crop = short < MODEL.resizeShortest
+    ? Math.min(width, height)
+    : (MODEL.inputSize * short) / MODEL.resizeShortest;
+  const left = Math.max(0, Math.floor((width - crop) / 2));
+  const top = Math.max(0, Math.floor((height - crop) / 2));
+  const extractWidth = Math.min(width, Math.round(crop));
+  const extractHeight = Math.min(height, Math.round(crop));
   const { data } = await sharp(file)
     .rotate()
     .removeAlpha()
     .toColourspace('srgb')
-    .resize(rw, rh, { fit: 'fill', kernel: sharp.kernel.cubic })
-    .extract({ left, top, width: MODEL.inputSize, height: MODEL.inputSize })
+    .extract({ left, top, width: extractWidth, height: extractHeight })
+    .resize(MODEL.inputSize, MODEL.inputSize, { fit: 'fill', kernel: sharp.kernel.cubic })
     .raw()
     .toBuffer({ resolveWithObject: true });
 

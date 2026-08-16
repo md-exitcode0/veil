@@ -76,8 +76,7 @@ async function createEngine() {
 
   const cfAttempts = [
     { url: FP32_URL, providers: ['webgpu'], backend: 'WebGPU', precision: 'fp32' },
-    { url: INT8_URL, providers: ['wasm'], backend: 'WebAssembly', precision: 'int8' },
-    { url: FP32_URL, providers: ['wasm'], backend: 'WebAssembly', precision: 'fp32' }
+    { url: INT8_URL, providers: ['wasm'], backend: 'WebAssembly', precision: 'int8' }
   ];
 
   let lastError;
