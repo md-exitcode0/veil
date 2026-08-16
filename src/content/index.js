@@ -152,7 +152,6 @@ mutationObserver.observe(document.documentElement, MUTATION_OPTIONS);
 let lastScrollAt = 0;
 let scrollLoop = false;
 const onScreen = new Set();
-const supportsAnchor = typeof CSS !== 'undefined' && CSS.supports?.('anchor-name', '--veil');
 document.addEventListener('scroll', onAnyScroll, { capture: true, passive: true });
 window.addEventListener('scroll', onAnyScroll, { capture: true, passive: true });
 window.addEventListener('resize', () => {
@@ -165,26 +164,13 @@ document.addEventListener('visibilitychange', schedulePositions);
 
 function onAnyScroll() {
   lastScrollAt = performance.now();
-  if (supportsAnchor && detailPanel.hidden) {
-    if (scrollLoop) return;
-    scrollLoop = true;
-    setTimeout(() => {
-      scrollLoop = false;
-      if (performance.now() - lastScrollAt >= 150) scanVisible();
-    }, 180);
-    return;
-  }
+  if (!detailPanel.hidden) schedulePositions();
   if (scrollLoop) return;
   scrollLoop = true;
-  const tick = () => {
-    updatePositionsNow();
-    if (performance.now() - lastScrollAt < 160) requestAnimationFrame(tick);
-    else {
-      scrollLoop = false;
-      scanVisible();
-    }
-  };
-  requestAnimationFrame(tick);
+  setTimeout(() => {
+    scrollLoop = false;
+    if (performance.now() - lastScrollAt >= 150) scanVisible();
+  }, 180);
 }
 
 function scanVisible() {
@@ -242,7 +228,9 @@ function collectImages(root, options = {}, bucket = []) {
     bucket.push(root);
     return bucket;
   }
-  if (root instanceof Element && cssBackgroundUrl(root)) bucket.push(root);
+  if (root instanceof Element && cssBackgroundUrl(root) && !root.querySelector?.('img, video, canvas')) {
+    bucket.push(root);
+  }
   if (root.querySelectorAll) {
     bucket.push(...root.querySelectorAll('img, video, canvas, [poster], [data-src], [data-srcset], [data-original]'));
     for (const element of root.querySelectorAll(BG_CANDIDATE)) {
@@ -463,7 +451,7 @@ function evictIfNeeded() {
     const record = records.get(victim);
     clearRecordTreatment(record);
     onScreen.delete(record);
-    record.badge.remove();
+    detachFlowBadge(record);
     records.delete(victim);
   }
 }
@@ -488,8 +476,7 @@ async function analyze(image) {
   };
   records.set(image, record);
   onScreen.add(record);
-  mountOverlay(record.badge);
-  bindBadgeAnchor(record);
+  attachFlowBadge(record);
   pageState.status = 'scanning';
   schedulePositions();
   inFlight += 1;
@@ -548,7 +535,7 @@ async function analyze(image) {
     schedulePositions();
     setTimeout(() => {
       if (records.get(image) === record && record.status === 'error') {
-        record.badge.remove();
+        detachFlowBadge(record);
         onScreen.delete(record);
         records.delete(image);
       }
@@ -569,10 +556,13 @@ function createBadge(id) {
   badge.dataset.veilId = id;
   badge.setAttribute('aria-label', 'Veil is analyzing this image');
   badge.innerHTML = '<span class="veil-badge__pulse"></span><span>Checking</span>';
-  badge.addEventListener('click', () => {
+  badge.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
     const record = [...records.values()].find((candidate) => candidate.id === id);
     if (record?.result) showDetails(record);
   });
+  badge.addEventListener('mousedown', (event) => event.stopPropagation());
   return badge;
 }
 
@@ -596,17 +586,64 @@ function renderRecord(record) {
     `${Math.round(score * 100)} percent probability this image is AI-generated. Open details.`
   );
   applyMediaTreatment(record);
-  bindBadgeAnchor(record);
+  attachFlowBadge(record);
   schedulePositions();
 }
 
-function bindBadgeAnchor(record) {
-  if (!supportsAnchor || !(record.image instanceof Element)) return;
-  const name = `--${record.id}`;
-  record.image.style.setProperty('anchor-name', name);
-  record.badge.style.setProperty('position-anchor', name);
-  record.badge.dataset.anchored = '1';
-  record.anchored = true;
+function badgeHost(el) {
+  if (el instanceof HTMLImageElement || el instanceof HTMLVideoElement || el instanceof HTMLCanvasElement) {
+    return el.parentElement;
+  }
+  return el instanceof HTMLElement ? el : null;
+}
+
+function attachFlowBadge(record) {
+  const host = badgeHost(record.image);
+  const badge = record.badge;
+  if (!(host instanceof HTMLElement)) {
+    badge.classList.add('veil-badge--fixed');
+    mountOverlay(badge);
+    record.badgeFlow = false;
+    return;
+  }
+  badge.classList.remove('veil-badge--fixed');
+  if (getComputedStyle(host).position === 'static') {
+    host.style.position = 'relative';
+    record.badgeResetParent = true;
+    record.badgeParent = host;
+  }
+  if (badge.parentElement !== host) host.append(badge);
+  record.badgeFlow = true;
+  syncFlowBadge(record);
+}
+
+function syncFlowBadge(record) {
+  const el = record.image;
+  const badge = record.badge;
+  if (!record.badgeFlow || !badge) return;
+  badge.style.visibility = badge.hidden ? 'hidden' : 'visible';
+  badge.style.display = badge.hidden ? 'none' : 'flex';
+  if (badge.hidden) return;
+  const top = (el instanceof HTMLElement ? el.offsetTop : 0) + 8;
+  const width = el instanceof HTMLElement ? el.offsetWidth : badge.parentElement?.clientWidth || 0;
+  const left = (el instanceof HTMLElement ? el.offsetLeft : 0) + Math.max(0, width - (badge.offsetWidth || 72) - 8);
+  badge.style.top = `${top}px`;
+  badge.style.left = `${left}px`;
+  badge.style.right = 'auto';
+  badge.style.transform = 'none';
+}
+
+function detachFlowBadge(record) {
+  record.badge?.remove();
+  if (record.badgeResetParent && record.badgeParent instanceof HTMLElement) {
+    const used = [...records.values()].some((other) => other !== record && (
+      other.badgeParent === record.badgeParent || other.coverPositionEl === record.badgeParent
+    ));
+    if (!used) record.badgeParent.style.removeProperty('position');
+  }
+  record.badgeResetParent = false;
+  record.badgeParent = undefined;
+  record.badgeFlow = false;
 }
 
 function renderAllResults() {
@@ -626,11 +663,10 @@ function schedulePositions() {
 }
 
 function updatePositionsNow() {
-  if (supportsAnchor) {
-    if (!detailPanel.hidden) positionDetailPanel();
-    return;
+  for (const record of onScreen) {
+    if (record.badgeFlow) syncFlowBadge(record);
+    else positionBadge(record);
   }
-  for (const record of onScreen) positionBadge(record);
   if (!detailPanel.hidden) positionDetailPanel();
 }
 
@@ -866,7 +902,7 @@ function resetImage(image) {
   if (record) {
     clearRecordTreatment(record);
     onScreen.delete(record);
-    record.badge.remove();
+    detachFlowBadge(record);
     records.delete(image);
   }
   intersectionObserver.observe(image);
@@ -875,7 +911,7 @@ function resetImage(image) {
 function rescanPage() {
   for (const record of records.values()) {
     clearRecordTreatment(record);
-    record.badge.remove();
+    detachFlowBadge(record);
   }
   records.clear();
   onScreen.clear();
@@ -900,13 +936,14 @@ function injectPageStyles() {
   style.textContent = `
     img[data-veil-treatment="blur"],
     video[data-veil-treatment="blur"],
-    canvas[data-veil-treatment="blur"] { filter: blur(18px) saturate(.55) brightness(.82) !important; }
+    canvas[data-veil-treatment="blur"] { filter: blur(16px) saturate(.65) brightness(.88) !important; }
     img[data-veil-treatment="hide"],
     video[data-veil-treatment="hide"],
     canvas[data-veil-treatment="hide"] { visibility: hidden !important; }
     #veil-overlay-layer { all: initial; position: fixed; inset: 0; z-index: 2147483646; pointer-events: none; }
-    .veil-cover { position: absolute !important; inset: 0 !important; z-index: 2; background: rgba(20,18,14,.28); pointer-events: none; }
-    .veil-badge { position: fixed; top: 0; left: 0; z-index: 3; will-change: transform; }
+    .veil-cover { position: absolute !important; inset: 0 !important; z-index: 2; background: rgba(20,18,14,.22); pointer-events: none; }
+    .veil-badge { position: absolute !important; top: 8px; right: 8px; left: auto; z-index: 2147483646 !important; }
+    .veil-badge--fixed { position: fixed !important; top: 0; left: 0; right: auto; }
   `;
   (document.head || document.documentElement).append(style);
 }
