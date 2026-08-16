@@ -239,7 +239,8 @@ async function analyzeImage({
   naturalHeight,
   requestId,
   dualView,
-  encodedPeek
+  encodedPeek,
+  fetchedBytes
 }) {
   const renderedUrl = displaySrc || source;
   const host = inspectOwnHost(renderedUrl);
@@ -294,7 +295,8 @@ async function analyzeImage({
       pixelWidth,
       pixelHeight,
       encoded,
-      bytesPromise
+      bytesPromise,
+      fetchedBytes
     });
 
     const width = prepared.bitmapWidth || Number(naturalWidth) || prepared.width;
@@ -430,7 +432,8 @@ async function prepareImageData({
   pixelWidth,
   pixelHeight,
   encoded,
-  bytesPromise
+  bytesPromise,
+  fetchedBytes
 }) {
   const rgba = usablePixels(pixelBuffer, pixelWidth, pixelHeight);
   if (rgba) {
@@ -440,6 +443,10 @@ async function prepareImageData({
       width: MODEL.inputSize,
       height: MODEL.inputSize
     };
+  }
+
+  if (fetchedBytes?.buffer) {
+    return bytesToPrepared(encoded, fetchedBytes.buffer, fetchedBytes.mimeType);
   }
 
   const fetched = await bytesPromise;

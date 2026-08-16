@@ -39,7 +39,7 @@ export default {
   content_security_policy: {
     extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   },
-  cross_origin_embedder_policy: { value: 'require-corp' },
+  cross_origin_embedder_policy: { value: 'credentialless' },
   cross_origin_opener_policy: { value: 'same-origin' },
   web_accessible_resources: [
     {

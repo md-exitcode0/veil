@@ -620,12 +620,20 @@ function attachFlowBadge(record) {
 function syncFlowBadge(record) {
   const el = record.image;
   const badge = record.badge;
-  if (!record.badgeFlow || !badge) return;
+  const host = badge?.parentElement;
+  if (!record.badgeFlow || !badge || !host) return;
   badge.style.visibility = badge.hidden ? 'hidden' : 'visible';
   badge.style.display = badge.hidden ? 'none' : 'flex';
   if (badge.hidden) return;
+  if (host === el) {
+    badge.style.top = '8px';
+    badge.style.right = '8px';
+    badge.style.left = 'auto';
+    badge.style.transform = 'none';
+    return;
+  }
   const top = (el instanceof HTMLElement ? el.offsetTop : 0) + 8;
-  const width = el instanceof HTMLElement ? el.offsetWidth : badge.parentElement?.clientWidth || 0;
+  const width = el instanceof HTMLElement ? el.offsetWidth : host.clientWidth || 0;
   const left = (el instanceof HTMLElement ? el.offsetLeft : 0) + Math.max(0, width - (badge.offsetWidth || 72) - 8);
   badge.style.top = `${top}px`;
   badge.style.left = `${left}px`;

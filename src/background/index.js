@@ -1,6 +1,6 @@
 import { inspectOwnHost } from '../analysis/forensics.js';
 import { FILE_AI_SCORE, HOST_AI_SCORE, fileEvidence } from '../analysis/ensemble.js';
-import { MESSAGE } from '../shared/constants.js';
+import { MESSAGE, MODEL } from '../shared/constants.js';
 
 const OFFSCREEN_PATH = 'src/offscreen/offscreen.html';
 const CACHE_LIMIT = 400;
@@ -124,6 +124,10 @@ async function handleAnalyze(payload, sender) {
 async function runAnalyze(payload, sender, cacheKey) {
   analyzing += 1;
   try {
+    if (!payloadHasPixels(payload)) {
+      const bytes = await fetchImageBytes(payload.displaySrc) || await fetchImageBytes(payload.source);
+      if (bytes) payload.fetchedBytes = bytes;
+    }
     const result = await forwardToEngine({
       type: MESSAGE.OFFSCREEN_ANALYZE,
       payload
@@ -199,6 +203,27 @@ async function closeOffscreen() {
   try {
     if (await offscreenExists()) await chrome.offscreen.closeDocument();
   } catch {
+  }
+}
+
+function payloadHasPixels(payload) {
+  const buffer = payload?.pixelBuffer;
+  if (!buffer) return false;
+  const length = buffer.byteLength || buffer.length || 0;
+  return length === MODEL.inputSize * MODEL.inputSize * 4;
+}
+
+async function fetchImageBytes(url) {
+  if (!url || !/^(https?:|data:)/i.test(url)) return null;
+  try {
+    const response = await fetch(url, { credentials: 'omit', cache: 'force-cache' });
+    if (!response.ok) return null;
+    return {
+      buffer: await response.arrayBuffer(),
+      mimeType: response.headers.get('content-type') || ''
+    };
+  } catch {
+    return null;
   }
 }
 
