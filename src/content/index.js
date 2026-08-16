@@ -900,12 +900,12 @@ function injectPageStyles() {
   style.textContent = `
     img[data-veil-treatment="blur"],
     video[data-veil-treatment="blur"],
-    canvas[data-veil-treatment="blur"] { visibility: hidden !important; }
+    canvas[data-veil-treatment="blur"] { filter: blur(18px) saturate(.55) brightness(.82) !important; }
     img[data-veil-treatment="hide"],
     video[data-veil-treatment="hide"],
     canvas[data-veil-treatment="hide"] { visibility: hidden !important; }
     #veil-overlay-layer { all: initial; position: fixed; inset: 0; z-index: 2147483646; pointer-events: none; }
-    .veil-cover { position: absolute !important; inset: 0 !important; z-index: 2; background: #1c1916; pointer-events: none; }
+    .veil-cover { position: absolute !important; inset: 0 !important; z-index: 2; background: rgba(20,18,14,.28); pointer-events: none; }
     .veil-badge { position: fixed; top: 0; left: 0; z-index: 3; will-change: transform; }
   `;
   (document.head || document.documentElement).append(style);
@@ -919,6 +919,10 @@ function applyMediaTreatment(record) {
   }
   record.image.dataset.veilTreatment = settings.aiImageAction;
   if (settings.aiImageAction === 'hide') {
+    detachCover(record);
+    return;
+  }
+  if (isMediaElement(record.image)) {
     detachCover(record);
     return;
   }

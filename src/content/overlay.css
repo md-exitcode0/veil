@@ -13,7 +13,7 @@
 img[data-veil-treatment="blur"],
 video[data-veil-treatment="blur"],
 canvas[data-veil-treatment="blur"] {
-  visibility: hidden !important;
+  filter: blur(18px) saturate(0.55) brightness(0.82) !important;
 }
 
 img[data-veil-treatment="hide"],
@@ -26,7 +26,7 @@ canvas[data-veil-treatment="hide"] {
   position: absolute !important;
   inset: 0 !important;
   z-index: 2;
-  background: #1c1916;
+  background: rgba(20, 18, 14, 0.28);
   pointer-events: none;
 }
 
