@@ -59,10 +59,6 @@ function renderState(state) {
   elements.aiCount.textContent = state.aiCount || 0;
   elements.realCount.textContent = state.realCount || 0;
   elements.errorCount.textContent = state.errors || 0;
-  const total = Math.max(1, (state.aiCount || 0) + (state.realCount || 0));
-  const aiShare = Math.round(((state.aiCount || 0) / total) * 100);
-  elements.dial.style.setProperty('--scan-progress', `${state.scanned ? Math.max(8, aiShare) : 0}%`);
-
   if (state.status === 'paused') {
     elements.scanState.textContent = 'Paused';
     elements.summary.textContent = 'Automatic checks are off.';

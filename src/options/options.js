@@ -63,13 +63,16 @@ function populate(value) {
 }
 
 function renderModelStatus(result) {
-  const state = result?.state || 'error';
+  const state = result?.ok ? (result.state || 'ready') : (result?.state || 'error');
   elements.modelStatus.className = `model-status model-status--${state}`;
-  if (state === 'loading') elements.modelStatus.innerHTML = '<i></i> Loading the bundled model…';
-  else if (result?.ok && state === 'ready') {
+  if (state === 'loading') {
+    elements.modelStatus.innerHTML = '<i></i> Loading the local model…';
+  } else if (result?.ok && state === 'ready') {
     const extra = [result.backend, result.precision].filter(Boolean).join(' · ');
-    elements.modelStatus.innerHTML = `<i></i> Ready · ${escapeHtml(extra || 'local')}`;
-  } else elements.modelStatus.innerHTML = `<i></i> ${escapeHtml(result?.error || 'Readiness check failed')}`;
+    elements.modelStatus.innerHTML = `<i></i> Ready${extra ? ` · ${escapeHtml(extra)}` : ''}`;
+  } else {
+    elements.modelStatus.innerHTML = `<i></i> ${escapeHtml(result?.error || 'Readiness check failed')}`;
+  }
 }
 
 function escapeHtml(value) {

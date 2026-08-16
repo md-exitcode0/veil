@@ -1,23 +1,24 @@
 :root {
-  --bg: #0c0d10;
-  --paper: #14161c;
-  --paper-2: #1a1d25;
-  --line: #262a33;
-  --ink: #ece8df;
-  --ink-soft: #8b8790;
-  --amber: #f0b429;
-  --amber-dim: #8a6a12;
-  --ai: #ff5d4a;
-  --ai-soft: rgba(255, 93, 74, 0.14);
-  --real: #3dcc9a;
-  --real-soft: rgba(61, 204, 154, 0.14);
-  --shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+  --bg: #f3efe6;
+  --paper: #fffcf6;
+  --paper-2: #f7f2e8;
+  --line: #e4ddd0;
+  --ink: #1b1914;
+  --ink-soft: #6e675c;
+  --accent: #125e4d;
+  --accent-soft: #dceee8;
+  --ai: #b13228;
+  --ai-soft: #f8e3e0;
+  --real: #125e4d;
+  --real-soft: #dceee8;
+  --warn: #8a5a12;
+  --shadow: 0 10px 28px rgba(40, 32, 18, 0.08);
 }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--ink); }
 body {
-  font: 500 13px/1.45 ui-sans-serif, "Segoe UI", system-ui, sans-serif;
+  font: 450 14px/1.5 "Segoe UI", ui-sans-serif, system-ui, sans-serif;
 }
 
 button, input, select { font: inherit; color: inherit; }
@@ -27,62 +28,62 @@ button { cursor: pointer; }
   display: flex;
   align-items: center;
   gap: 8px;
-  font: 750 13px/1 ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font: 650 15px/1 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: -0.03em;
 }
 .wordmark__mark {
-  width: 14px;
-  height: 18px;
-  border: 1.5px solid var(--amber);
+  width: 11px;
+  height: 16px;
+  border: 1.5px solid var(--accent);
   border-radius: 99px;
   position: relative;
 }
 .wordmark__mark::after {
   content: "";
   position: absolute;
-  inset: 3px 5px;
-  background: var(--amber);
+  inset: 3px 4px;
+  background: var(--accent);
   border-radius: 99px;
 }
 
 .eyebrow {
   margin: 0;
-  color: var(--amber);
-  font: 800 10px/1.2 ui-monospace, "SFMono-Regular", monospace;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  color: var(--accent);
+  font: 650 11px/1.3 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0.04em;
 }
 
 .muted { color: var(--ink-soft); }
 
 .button {
   border: 0;
-  border-radius: 10px;
-  padding: 10px 12px;
-  background: var(--amber);
-  color: #14120b;
-  font-weight: 750;
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: var(--accent);
+  color: #f6fffb;
+  font-weight: 650;
 }
-.button:hover { filter: brightness(1.05); }
+.button:hover { background: #0e4c3e; }
 .button:disabled { opacity: 0.55; cursor: default; }
 .button--quiet {
-  background: var(--paper-2);
+  background: var(--paper);
   color: var(--ink);
   border: 1px solid var(--line);
 }
+.button--quiet:hover { background: var(--paper-2); }
 
 .switch {
   position: relative;
   display: inline-block;
   width: 38px;
   height: 22px;
+  flex: none;
 }
 .switch input { opacity: 0; width: 0; height: 0; }
 .switch span {
   position: absolute;
   inset: 0;
-  background: #2a2e38;
+  background: #cfc6b6;
   border-radius: 99px;
   transition: 0.15s;
 }
@@ -97,14 +98,12 @@ button { cursor: pointer; }
   border-radius: 50%;
   transition: 0.15s;
 }
-.switch input:checked + span { background: var(--amber); }
-.switch input:checked + span::after { transform: translateX(16px); background: #14120b; }
+.switch input:checked + span { background: var(--accent); }
+.switch input:checked + span::after { transform: translateX(16px); }
 
-select, input[type="range"] {
-  accent-color: var(--amber);
-}
+select, input[type="range"] { accent-color: var(--accent); }
 select {
-  background: var(--paper-2);
+  background: #fff;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 7px 8px;

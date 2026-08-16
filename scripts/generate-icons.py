@@ -6,14 +6,14 @@ OUT = Path(__file__).resolve().parents[1] / "public" / "icons"
 OUT.mkdir(parents=True, exist_ok=True)
 
 def make_icon(size: int) -> Image.Image:
-    img = Image.new("RGBA", (size, size), (12, 13, 16, 255))
+    img = Image.new("RGBA", (size, size), (243, 239, 230, 255))
     draw = ImageDraw.Draw(img)
     margin = max(1, size // 16)
     draw.rounded_rectangle(
         [margin, margin, size - margin - 1, size - margin - 1],
         radius=max(3, size // 5),
-        fill=(20, 22, 28, 255),
-        outline=(240, 180, 41, 255),
+        fill=(255, 252, 246, 255),
+        outline=(18, 94, 77, 255),
         width=max(1, size // 18),
     )
     slit_w = max(2, size // 9)
@@ -23,7 +23,7 @@ def make_icon(size: int) -> Image.Image:
     draw.rounded_rectangle(
         [x0, y0, x0 + slit_w, y0 + slit_h],
         radius=slit_w // 2,
-        fill=(240, 180, 41, 255),
+        fill=(18, 94, 77, 255),
     )
     return img
 

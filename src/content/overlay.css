@@ -4,8 +4,8 @@
   inset: 0;
   z-index: 2147483646;
   pointer-events: none;
-  color: #ece8df;
-  font-family: ui-sans-serif, "Segoe UI", system-ui, sans-serif;
+  color: #1b1914;
+  font-family: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
   line-height: 1.35;
 }
@@ -26,35 +26,32 @@ img[data-veil-treatment="hide"] {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 28px;
+  min-height: 26px;
   padding: 3px 8px 3px 4px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(27, 25, 20, 0.08);
   border-radius: 999px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 6px 16px rgba(27, 25, 20, 0.16);
   color: #fff;
   cursor: pointer;
   pointer-events: auto;
-  font: 700 10px/1 ui-sans-serif, "Segoe UI", system-ui, sans-serif;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  font: 700 10px/1 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0.03em;
 }
 
 .veil-badge:focus-visible {
-  outline: 2px solid #f0b429;
+  outline: 2px solid #125e4d;
   outline-offset: 2px;
 }
 
-.veil-badge--loading { background: rgba(20, 22, 28, 0.92); }
-.veil-badge--ai { background: rgba(196, 54, 42, 0.94); }
-.veil-badge--real { background: rgba(22, 122, 92, 0.94); }
-.veil-badge--error { background: rgba(122, 92, 36, 0.94); }
+.veil-badge--loading { background: #3a362e; }
+.veil-badge--ai { background: #b13228; }
+.veil-badge--real { background: #125e4d; }
+.veil-badge--error { background: #8a5a12; }
 
 .veil-badge__mark {
   display: grid;
   min-width: 22px;
-  height: 20px;
+  height: 18px;
   padding: 0 4px;
   place-items: center;
   border-radius: 999px;
@@ -66,7 +63,7 @@ img[data-veil-treatment="hide"] {
   width: 8px;
   height: 8px;
   border: 2px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #f0b429;
+  border-top-color: #fff;
   border-radius: 50%;
   animation: veil-spin 0.7s linear infinite;
 }
@@ -78,13 +75,13 @@ img[data-veil-treatment="hide"] {
   max-height: calc(100vh - 20px);
   overflow: auto;
   padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  background: #14161c;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
-  color: #ece8df;
+  border: 1px solid #e4ddd0;
+  border-radius: 14px;
+  background: #fffcf6;
+  box-shadow: 0 20px 50px rgba(27, 25, 20, 0.18);
+  color: #1b1914;
   pointer-events: auto;
-  font: 500 13px/1.45 ui-sans-serif, "Segoe UI", system-ui, sans-serif;
+  font: 500 13px/1.45 "Segoe UI", system-ui, sans-serif;
 }
 
 .veil-detail[hidden] { display: none; }
@@ -102,86 +99,83 @@ img[data-veil-treatment="hide"] {
   height: 28px;
   place-items: center;
   border-radius: 8px;
-  color: #8b8790;
+  color: #6e675c;
   cursor: pointer;
   font: 22px/1 system-ui;
 }
-.veil-detail__close:hover { background: #1d2028; color: #ece8df; }
+.veil-detail__close:hover { background: #f3efe6; color: #1b1914; }
 
 .veil-detail__eyebrow {
   margin: 0 0 10px;
-  color: #f0b429;
-  font: 800 10px/1.2 ui-monospace, "SFMono-Regular", monospace;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  color: #125e4d;
+  font: 650 11px/1.2 "Segoe UI", system-ui, sans-serif;
 }
 
 .veil-detail__score { display: flex; align-items: baseline; gap: 9px; }
-.veil-detail__score strong { font: 700 40px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.05em; }
-.veil-detail__score span { color: #8b8790; font-size: 12px; }
-.veil-detail__score--ai strong { color: #ff6d5c; }
-.veil-detail__score--real strong { color: #3dcc9a; }
+.veil-detail__score strong { font: 700 36px/1 "Segoe UI", system-ui, sans-serif; letter-spacing: -0.04em; }
+.veil-detail__score span { color: #6e675c; font-size: 12px; }
+.veil-detail__score--ai strong { color: #b13228; }
+.veil-detail__score--real strong { color: #125e4d; }
 .veil-detail__verdict { margin: 4px 0 14px; font-weight: 700; }
 
 .veil-detail__meter {
   position: relative;
-  height: 7px;
+  height: 6px;
   overflow: visible;
   border-radius: 99px;
-  background: #262a33;
+  background: #e4ddd0;
 }
 .veil-detail__meter i {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #3dcc9a, #f0b429 65%, #ff5d4a);
+  background: linear-gradient(90deg, #125e4d, #c9a227 65%, #b13228);
 }
 .veil-detail__meter b {
   position: absolute;
   top: -4px;
   width: 2px;
-  height: 15px;
-  background: #ece8df;
+  height: 14px;
+  background: #1b1914;
 }
 .veil-detail__legend {
   display: flex;
   justify-content: space-between;
   margin-top: 6px;
-  color: #6f6a73;
-  font: 650 9px/1.2 ui-monospace, monospace;
+  color: #8a8378;
+  font-size: 10px;
 }
 
 .veil-detail__evidence {
   margin: 16px 0 12px;
   padding: 0;
   list-style: none;
-  border-top: 1px solid #262a33;
+  border-top: 1px solid #e4ddd0;
 }
 .veil-detail__evidence li {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   padding: 9px 0;
-  border-bottom: 1px solid #262a33;
+  border-bottom: 1px solid #e4ddd0;
 }
-.veil-detail__evidence span { min-width: 0; }
 .veil-detail__evidence small {
   flex: none;
-  color: #6f6a73;
-  font: 700 9px/1.4 ui-monospace, monospace;
+  color: #8a8378;
+  font-size: 10px;
   text-transform: uppercase;
 }
 .veil-detail__meta {
   margin: 0;
-  color: #8b8790;
-  font: 600 10px/1.45 ui-monospace, monospace;
+  color: #6e675c;
+  font-size: 11px;
 }
 .veil-detail__privacy {
   margin: 12px 0 0;
   padding: 10px 11px;
   border-radius: 10px;
-  background: #1a2420;
-  color: #8fd9bb;
+  background: #dceee8;
+  color: #125e4d;
   font-size: 11px;
 }
 .veil-detail__action {
@@ -190,14 +184,13 @@ img[data-veil-treatment="hide"] {
   width: 100%;
   margin: 0 0 12px;
   padding: 10px 12px;
-  border-radius: 10px;
-  background: #f0b429;
-  color: #14120b;
+  border-radius: 8px;
+  background: #125e4d;
+  color: #f6fffb;
   cursor: pointer;
   text-align: center;
-  font: 750 11px/1.2 ui-sans-serif, system-ui, sans-serif;
+  font: 650 12px/1.2 "Segoe UI", system-ui, sans-serif;
 }
-.veil-detail__action:hover { filter: brightness(1.05); }
 
 @keyframes veil-spin { to { transform: rotate(360deg); } }
 

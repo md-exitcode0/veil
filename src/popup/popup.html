@@ -8,7 +8,7 @@
   <body>
     <main class="popup-shell">
       <header class="popup-header">
-        <div class="wordmark"><span class="wordmark__mark" aria-hidden="true"></span><span>Veil</span></div>
+        <div class="wordmark"><span class="wordmark__mark" aria-hidden="true"></span><span>veil</span></div>
         <label class="switch" title="Scan images automatically">
           <input id="enabled" type="checkbox" aria-label="Scan images automatically" />
           <span></span>
@@ -16,12 +16,10 @@
       </header>
 
       <section class="scan-card" aria-live="polite">
-        <div class="scan-card__dial" id="dial"><span id="scanned-count">0</span><small>checked</small></div>
-        <div>
-          <p class="eyebrow" id="scan-state">Waiting</p>
-          <h1 id="summary">Open a regular webpage to start.</h1>
-          <p id="site-name" class="muted">Every check runs on-device.</p>
-        </div>
+        <p class="eyebrow" id="scan-state">Waiting</p>
+        <h1 id="summary">Open a regular webpage to start.</h1>
+        <p id="site-name" class="muted">Every check stays on this device.</p>
+        <p class="scan-card__count"><span id="scanned-count">0</span> checked</p>
       </section>
 
       <section class="tally" aria-label="Page results">
@@ -40,10 +38,9 @@
       </label>
 
       <section class="results-section">
-        <div class="section-heading"><h2>Recent checks</h2><span id="threshold-label">65% line</span></div>
+        <div class="section-heading"><h2>Recent</h2><span id="threshold-label">65% line</span></div>
         <div id="empty-state" class="empty-state">
-          <span class="empty-state__sweep"></span>
-          <p>Visible images appear here as they are checked.</p>
+          <p>Visible images will show up here as they are checked.</p>
         </div>
         <ol id="results" class="result-list" hidden></ol>
       </section>
@@ -52,7 +49,6 @@
         <button id="rescan" class="button" type="button">Scan this page again</button>
         <button id="settings" class="button button--quiet" type="button">Settings</button>
       </footer>
-      <p class="privacy-line"><span></span>WebGPU / WASM · no uploads</p>
     </main>
     <script type="module" src="./popup.js"></script>
   </body>

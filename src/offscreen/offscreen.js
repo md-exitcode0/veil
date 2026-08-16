@@ -38,7 +38,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 function configureOrt() {
   ort.env.wasm.wasmPaths = WASM_DIR;
-  ort.env.wasm.numThreads = Math.min(4, navigator.hardwareConcurrency || 1);
+  // Extension pages do not have COOP/COEP, so SharedArrayBuffer is usually
+  // missing. Asking for threads then makes the whole WASM session fail.
+  const threaded = typeof SharedArrayBuffer !== 'undefined';
+  ort.env.wasm.numThreads = threaded ? Math.min(4, navigator.hardwareConcurrency || 1) : 1;
   ort.env.wasm.simd = true;
   ort.env.wasm.proxy = false;
   ort.env.logLevel = 'error';
@@ -76,6 +79,7 @@ async function createEngine() {
 
   const cfAttempts = [
     { url: FP32_URL, providers: ['webgpu'], backend: 'WebGPU', precision: 'fp32' },
+    { url: FP32_URL, providers: ['wasm'], backend: 'WebAssembly', precision: 'fp32' },
     { url: INT8_URL, providers: ['wasm'], backend: 'WebAssembly', precision: 'int8' }
   ];
 
@@ -228,6 +232,9 @@ function guessMimeType(source = '') {
 
 function humanizeError(error) {
   const message = error instanceof Error ? error.message : String(error);
+  if (/ConvInteger|not find an implementation/i.test(message)) {
+    return 'This browser rejected the quantized fallback. Retry — Veil will use the full local model instead.';
+  }
   if (/not found|404|no available backend|failed to fetch|no such file/i.test(message)) {
     return `The local detector model could not be loaded. ${message}`;
   }
