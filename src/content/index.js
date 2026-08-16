@@ -934,12 +934,8 @@ function injectPageStyles() {
   const style = document.createElement('style');
   style.id = 'veil-injected-style';
   style.textContent = `
-    img[data-veil-treatment="blur"],
-    video[data-veil-treatment="blur"],
-    canvas[data-veil-treatment="blur"] { filter: blur(16px) saturate(.65) brightness(.88) !important; }
-    img[data-veil-treatment="hide"],
-    video[data-veil-treatment="hide"],
-    canvas[data-veil-treatment="hide"] { visibility: hidden !important; }
+    [data-veil-treatment="blur"] { filter: blur(16px) saturate(.65) brightness(.88) !important; }
+    [data-veil-treatment="hide"] { visibility: hidden !important; }
     #veil-overlay-layer { all: initial; position: fixed; inset: 0; z-index: 2147483646; pointer-events: none; }
     .veil-cover { position: absolute !important; inset: 0 !important; z-index: 2; background: rgba(20,18,14,.22); pointer-events: none; }
     .veil-badge { position: absolute !important; top: 8px; right: 8px; left: auto; z-index: 2147483646 !important; }
@@ -955,15 +951,19 @@ function applyMediaTreatment(record) {
     return;
   }
   record.image.dataset.veilTreatment = settings.aiImageAction;
-  if (settings.aiImageAction === 'hide') {
-    detachCover(record);
-    return;
+  treatBackgroundSurface(record);
+  detachCover(record);
+}
+
+function treatBackgroundSurface(record) {
+  const el = record.image;
+  if (!(el instanceof Element)) return;
+  record.extraTreated ||= [];
+  const parent = el.parentElement;
+  if (parent && cssBackgroundUrl(parent) && !record.extraTreated.includes(parent)) {
+    parent.dataset.veilTreatment = settings.aiImageAction;
+    record.extraTreated.push(parent);
   }
-  if (isMediaElement(record.image)) {
-    detachCover(record);
-    return;
-  }
-  attachInFlowCover(record);
 }
 
 function coverHost(el) {
@@ -1033,6 +1033,10 @@ function clearRecordTreatment(record) {
     delete record.image.dataset.veilTreatment;
     record.image.style.removeProperty('anchor-name');
   }
+  for (const extra of record.extraTreated || []) {
+    delete extra.dataset.veilTreatment;
+  }
+  record.extraTreated = undefined;
   if (record.badge) {
     delete record.badge.dataset.anchored;
     record.badge.style.removeProperty('position-anchor');
