@@ -151,6 +151,8 @@ mutationObserver.observe(document.documentElement, MUTATION_OPTIONS);
 
 let lastScrollAt = 0;
 let scrollLoop = false;
+const onScreen = new Set();
+const supportsAnchor = typeof CSS !== 'undefined' && CSS.supports?.('anchor-name', '--veil');
 document.addEventListener('scroll', onAnyScroll, { capture: true, passive: true });
 window.addEventListener('scroll', onAnyScroll, { capture: true, passive: true });
 window.addEventListener('resize', schedulePositions, { passive: true });
@@ -158,6 +160,15 @@ document.addEventListener('visibilitychange', schedulePositions);
 
 function onAnyScroll() {
   lastScrollAt = performance.now();
+  if (supportsAnchor && detailPanel.hidden) {
+    if (scrollLoop) return;
+    scrollLoop = true;
+    setTimeout(() => {
+      scrollLoop = false;
+      if (performance.now() - lastScrollAt >= 150) scanVisible();
+    }, 180);
+    return;
+  }
   if (scrollLoop) return;
   scrollLoop = true;
   const tick = () => {
@@ -361,9 +372,13 @@ function handleIntersections(entries) {
     if (!(entry.target instanceof Element)) continue;
     const record = records.get(entry.target);
     if (!entry.isIntersecting) {
-      if (record) hideChrome(record);
+      if (record) {
+        onScreen.delete(record);
+        hideChrome(record);
+      }
       continue;
     }
+    if (record) onScreen.add(record);
     visible.push(entry);
   }
   visible.sort((a, b) => Math.abs(a.boundingClientRect.top + a.boundingClientRect.height / 2 - innerHeight / 2)
@@ -442,6 +457,7 @@ function evictIfNeeded() {
     if (!victim) break;
     const record = records.get(victim);
     clearRecordTreatment(record);
+    onScreen.delete(record);
     record.badge.remove();
     records.delete(victim);
   }
@@ -466,7 +482,9 @@ async function analyze(image) {
     badge: createBadge(id)
   };
   records.set(image, record);
+  onScreen.add(record);
   mountOverlay(record.badge);
+  bindBadgeAnchor(record);
   pageState.status = 'scanning';
   schedulePositions();
   inFlight += 1;
@@ -526,6 +544,7 @@ async function analyze(image) {
     setTimeout(() => {
       if (records.get(image) === record && record.status === 'error') {
         record.badge.remove();
+        onScreen.delete(record);
         records.delete(image);
       }
     }, 2500);
@@ -572,7 +591,17 @@ function renderRecord(record) {
     `${Math.round(score * 100)} percent probability this image is AI-generated. Open details.`
   );
   applyMediaTreatment(record);
+  bindBadgeAnchor(record);
   schedulePositions();
+}
+
+function bindBadgeAnchor(record) {
+  if (!supportsAnchor || !(record.image instanceof Element)) return;
+  const name = `--${record.id}`;
+  record.image.style.setProperty('anchor-name', name);
+  record.badge.style.setProperty('position-anchor', name);
+  record.badge.dataset.anchored = '1';
+  record.anchored = true;
 }
 
 function renderAllResults() {
@@ -592,7 +621,11 @@ function schedulePositions() {
 }
 
 function updatePositionsNow() {
-  for (const record of records.values()) positionBadge(record);
+  if (supportsAnchor) {
+    if (!detailPanel.hidden) positionDetailPanel();
+    return;
+  }
+  for (const record of onScreen) positionBadge(record);
   if (!detailPanel.hidden) positionDetailPanel();
 }
 
@@ -611,6 +644,11 @@ function positionBadge(record) {
     return;
   }
   mountOverlay(record.badge);
+  if (record.anchored) {
+    record.badge.style.visibility = record.badge.hidden ? 'hidden' : 'visible';
+    record.badge.style.display = record.badge.hidden ? 'none' : 'flex';
+    return;
+  }
 
   const imageRect = image.getBoundingClientRect();
   const visible = imageRect.width >= 28 && imageRect.height >= 28
@@ -822,6 +860,7 @@ function resetImage(image) {
   const record = records.get(image);
   if (record) {
     clearRecordTreatment(record);
+    onScreen.delete(record);
     record.badge.remove();
     records.delete(image);
   }
@@ -834,6 +873,7 @@ function rescanPage() {
     record.badge.remove();
   }
   records.clear();
+  onScreen.clear();
   pending.length = 0;
   Object.assign(pageState, { status: 'idle', scanned: 0, aiCount: 0, realCount: 0, errors: 0, results: [] });
   discoverImages(document);
@@ -855,12 +895,12 @@ function injectPageStyles() {
   style.textContent = `
     img[data-veil-treatment="blur"],
     video[data-veil-treatment="blur"],
-    canvas[data-veil-treatment="blur"] { filter: blur(22px) saturate(.55) brightness(.78) !important; }
+    canvas[data-veil-treatment="blur"] { filter: blur(16px) saturate(.55) brightness(.78) !important; transform: translateZ(0); }
     img[data-veil-treatment="hide"],
     video[data-veil-treatment="hide"],
     canvas[data-veil-treatment="hide"] { visibility: hidden !important; }
     #veil-overlay-layer { all: initial; position: fixed; inset: 0; z-index: 2147483646; pointer-events: none; }
-    .veil-cover { position: absolute !important; inset: 0 !important; z-index: 2; background: rgba(20,18,14,.4); backdrop-filter: blur(18px) saturate(.55); -webkit-backdrop-filter: blur(18px) saturate(.55); pointer-events: none; }
+    .veil-cover { position: absolute !important; inset: 0 !important; z-index: 2; background: rgba(20,18,14,.48); pointer-events: none; }
     .veil-badge { position: fixed; top: 0; left: 0; z-index: 3; will-change: transform; }
   `;
   (document.head || document.documentElement).append(style);
@@ -912,7 +952,15 @@ function detachCover(record) {
 
 function clearRecordTreatment(record) {
   detachCover(record);
-  if (record.image) delete record.image.dataset.veilTreatment;
+  if (record.image) {
+    delete record.image.dataset.veilTreatment;
+    record.image.style.removeProperty('anchor-name');
+  }
+  if (record.badge) {
+    delete record.badge.dataset.anchored;
+    record.badge.style.removeProperty('position-anchor');
+  }
+  record.anchored = false;
 }
 
 function clearMediaTreatment(image) {

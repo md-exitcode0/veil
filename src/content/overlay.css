@@ -13,8 +13,10 @@
 img[data-veil-treatment="blur"],
 video[data-veil-treatment="blur"],
 canvas[data-veil-treatment="blur"] {
-  filter: blur(22px) saturate(0.55) brightness(0.78) !important;
-  transition: filter 140ms ease !important;
+  filter: blur(16px) saturate(0.55) brightness(0.78) !important;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  isolation: isolate;
 }
 
 img[data-veil-treatment="hide"],
@@ -27,9 +29,7 @@ canvas[data-veil-treatment="hide"] {
   position: absolute !important;
   inset: 0 !important;
   z-index: 2;
-  background: rgba(20, 18, 14, 0.4);
-  backdrop-filter: blur(18px) saturate(0.55);
-  -webkit-backdrop-filter: blur(18px) saturate(0.55);
+  background: rgba(20, 18, 14, 0.48);
   pointer-events: none;
 }
 
@@ -39,7 +39,6 @@ canvas[data-veil-treatment="hide"] {
   top: 0;
   left: 0;
   z-index: 3;
-  will-change: transform;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -59,6 +58,16 @@ canvas[data-veil-treatment="hide"] {
 .veil-badge:focus-visible {
   outline: 2px solid #125e4d;
   outline-offset: 2px;
+}
+
+@supports (anchor-name: --veil) {
+  .veil-badge[data-anchored] {
+    position: fixed;
+    top: calc(anchor(top) + 8px);
+    right: calc(anchor(right) - 8px);
+    left: auto;
+    transform: none !important;
+  }
 }
 
 .veil-badge--loading { background: #3a362e; }
