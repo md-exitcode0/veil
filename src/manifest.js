@@ -2,7 +2,7 @@ export default {
   manifest_version: 3,
   name: 'Veil — Local AI Image Detector',
   short_name: 'Veil',
-  version: '1.0.0',
+  version: '1.2.0',
   description: 'Scores every visible image for AI generation on-device, then blurs or hides likely-AI images. No uploads.',
   minimum_chrome_version: '116',
   icons: {
@@ -32,10 +32,24 @@ export default {
       matches: ['http://*/*', 'https://*/*'],
       js: ['src/content/index.js'],
       css: ['src/content/overlay.css'],
-      run_at: 'document_idle'
+      run_at: 'document_idle',
+      all_frames: true
     }
   ],
   content_security_policy: {
     extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
-  }
+  },
+  cross_origin_embedder_policy: { value: 'require-corp' },
+  cross_origin_opener_policy: { value: 'same-origin' },
+  web_accessible_resources: [
+    {
+      resources: [
+        'src/offscreen/offscreen.html',
+        'assets/*',
+        'wasm/*',
+        'models/*'
+      ],
+      matches: ['http://*/*', 'https://*/*']
+    }
+  ]
 };

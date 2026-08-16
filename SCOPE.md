@@ -15,7 +15,7 @@ Veil targets POIDH Arbitrum bounty 323, **“local AI challenge: AI image detect
 | Confidence on every analyzed image | Overlay badge shows a percentage; click opens evidence | Fixture page |
 | Watermark / metadata support | Local PNG/JPEG/WebP/AVIF scans for generation parameters, C2PA labels, SynthID labels, known watermark markers | `src/analysis/forensics.test.js` |
 | Complete reproducible build/install | Pinned HF revision, SHA-256, `npm ci`, `npm run build:fresh` | `README.md` |
-| ≥75% balanced accuracy at 65% | Official CF operating point is mapped onto the required 65% line; dual-view + forensics on hard cases | `BENCHMARK.md`; `npm run benchmark` |
+| ≥75% balanced accuracy at 65% | Official CF 0.50 operating point is mapped onto the required 65% line; second head only when CF is uncertain; file metadata / displayed-host fast paths | `BENCHMARK.md`; `npm run benchmark` |
 
 ## Bounty threat model
 

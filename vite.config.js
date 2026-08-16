@@ -3,9 +3,16 @@ import { crx } from '@crxjs/vite-plugin';
 import { resolve } from 'node:path';
 import manifest from './src/manifest.js';
 
+const ortWebgpu = resolve(import.meta.dirname, 'node_modules/onnxruntime-web/dist/ort.webgpu.min.mjs');
+
 export default defineConfig({
   base: './',
   plugins: [crx({ manifest })],
+  resolve: {
+    alias: {
+      'onnxruntime-web/webgpu': ortWebgpu
+    }
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,

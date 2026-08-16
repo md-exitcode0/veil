@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { calibrateDecisionScore } from './calibrate.js';
+import { MODEL } from '../shared/constants.js';
 
 describe('calibrateDecisionScore', () => {
   it('maps the official 0.50 operating point onto the required 65% line', () => {
@@ -25,5 +26,17 @@ describe('calibrateDecisionScore', () => {
     const a = calibrateDecisionScore(0.00002, 0.012, 0.65);
     const b = calibrateDecisionScore(0.0008, 0.012, 0.65);
     expect(b).toBeGreaterThan(a);
+    expect(a).toBeGreaterThan(0.21);
+    expect(b).toBeLessThan(0.65);
+  });
+
+  it('puts the configured raw cut exactly on the 65% line', () => {
+    expect(calibrateDecisionScore(0.012, 0.012, 0.65)).toBeCloseTo(0.65, 8);
+  });
+
+  it('ships the official 0.50 operating point, not a photo-blurring 0.012 cut', () => {
+    expect(MODEL.calibration.rawThreshold).toBe(0.5);
+    expect(calibrateDecisionScore(0.5, MODEL.calibration.rawThreshold, 0.65)).toBeCloseTo(0.65, 8);
+    expect(calibrateDecisionScore(0.02, MODEL.calibration.rawThreshold, 0.65)).toBeLessThan(0.65);
   });
 });

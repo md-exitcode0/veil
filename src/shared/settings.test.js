@@ -9,6 +9,7 @@ describe('sanitizeSettings', () => {
     expect(settings.aiImageAction).toBe('blur');
     expect(settings.dualView).toBe(true);
     expect(settings.minimumDimension).toBe(160);
+    expect(settings.maxImagesPerPage).toBe(400);
   });
 
   it('clamps the bounty threshold into a legal range', () => {

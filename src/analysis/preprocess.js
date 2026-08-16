@@ -4,16 +4,35 @@ const SIZE = MODEL.inputSize;
 const PLANE = SIZE * SIZE;
 const canvas = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(SIZE, SIZE) : null;
 
-/**
- * Official geometry without an intermediate 440px bitmap:
- * crop a SIZE * (short/440) window from the center, scale to 384.
- * Same crop as "shortest → 440, then center 384".
- */
-export async function rasterizeView(bitmap, mode, profile = 'clip') {
+export function officialCropRect(width, height) {
+  const short = Math.min(width, height);
+  const crop = (SIZE * short) / MODEL.resizeShortest;
+  return {
+    sx: (width - crop) / 2,
+    sy: (height - crop) / 2,
+    sw: crop,
+    sh: crop
+  };
+}
+
+export function drawOfficialCrop(context, source, width, height) {
+  const { sx, sy, sw, sh } = officialCropRect(width, height);
+  context.drawImage(source, sx, sy, sw, sh, 0, 0, SIZE, SIZE);
+}
+
+function get2dContext(target) {
+  try {
+    return target.getContext('2d', { willReadFrequently: true, alpha: false, colorSpace: 'srgb' });
+  } catch {
+    return target.getContext('2d', { willReadFrequently: true, alpha: false });
+  }
+}
+
+export async function rasterizeToImageData(bitmap, mode = 'official') {
   const target = canvas || new OffscreenCanvas(SIZE, SIZE);
-  const context = target.getContext('2d', { willReadFrequently: true, alpha: false });
+  const context = get2dContext(target);
   context.imageSmoothingEnabled = true;
-  context.imageSmoothingQuality = 'medium';
+  context.imageSmoothingQuality = 'high';
   context.setTransform(1, 0, 0, 1, 0, 0);
 
   const width = bitmap.width;
@@ -26,35 +45,35 @@ export async function rasterizeView(bitmap, mode, profile = 'clip') {
     context.drawImage(bitmap, sx, sy, short, short, 0, 0, SIZE, SIZE);
   } else if (mode === 'flip') {
     context.setTransform(-1, 0, 0, 1, SIZE, 0);
-    drawOfficial(context, bitmap, width, height, short);
+    drawOfficialCrop(context, bitmap, width, height);
     context.setTransform(1, 0, 0, 1, 0, 0);
-  } else if (short < MODEL.resizeShortest) {
-    context.drawImage(bitmap, 0, 0, SIZE, SIZE);
   } else {
-    drawOfficial(context, bitmap, width, height, short);
+    drawOfficialCrop(context, bitmap, width, height);
   }
 
-  return imageDataToNchw(context.getImageData(0, 0, SIZE, SIZE), undefined, profile);
+  return context.getImageData(0, 0, SIZE, SIZE);
 }
 
-function drawOfficial(context, bitmap, width, height, short) {
-  const crop = (SIZE * short) / MODEL.resizeShortest;
-  const sx = (width - crop) / 2;
-  const sy = (height - crop) / 2;
-  context.drawImage(bitmap, sx, sy, crop, crop, 0, 0, SIZE, SIZE);
+export async function rasterizeView(bitmap, mode, profile = 'clip') {
+  return imageDataToNchw(await rasterizeToImageData(bitmap, mode), undefined, profile);
 }
 
 export function imageDataToNchw(imageData, out = new Float32Array(3 * PLANE), profile = 'clip') {
   const { data } = imageData;
   const mean = profile === 'imagenet' ? WEB_HEAD.mean : MODEL.mean;
   const std = profile === 'imagenet' ? WEB_HEAD.std : MODEL.std;
-  const [meanR, meanG, meanB] = mean;
-  const [stdR, stdG, stdB] = std;
-  for (let i = 0; i < PLANE; i += 1) {
-    const offset = i * 4;
-    out[i] = (data[offset] / 255 - meanR) / stdR;
-    out[PLANE + i] = (data[offset + 1] / 255 - meanG) / stdG;
-    out[2 * PLANE + i] = (data[offset + 2] / 255 - meanB) / stdB;
+  const scaleR = 1 / (255 * std[0]);
+  const scaleG = 1 / (255 * std[1]);
+  const scaleB = 1 / (255 * std[2]);
+  const biasR = mean[0] / std[0];
+  const biasG = mean[1] / std[1];
+  const biasB = mean[2] / std[2];
+  const planeG = PLANE;
+  const planeB = PLANE * 2;
+  for (let i = 0, offset = 0; i < PLANE; i += 1, offset += 4) {
+    out[i] = data[offset] * scaleR - biasR;
+    out[planeG + i] = data[offset + 1] * scaleG - biasG;
+    out[planeB + i] = data[offset + 2] * scaleB - biasB;
   }
   return out;
 }

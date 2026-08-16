@@ -37,7 +37,7 @@ const allowedRemote = new Set([
 const forbidden = [
   [/fetch\(\s*['"]https?:/g, 'remote fetch'],
   [/XMLHttpRequest/g, 'XMLHttpRequest'],
-  [/(?:openai|anthropic|replicate|fal\.ai|stability\.ai|huggingface\.co\/api)\.com/gi, 'inference service reference']
+  [/api\.openai\.com|api\.anthropic\.com|api\.replicate\.com|fal\.ai\/|stability\.ai\/|huggingface\.co\/api/gi, 'inference service reference']
 ];
 
 const violations = [];

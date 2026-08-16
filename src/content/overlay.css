@@ -19,9 +19,19 @@ img[data-veil-treatment="hide"] {
   visibility: hidden !important;
 }
 
+.veil-cover {
+  position: fixed;
+  z-index: 2;
+  background: rgba(20, 18, 14, 0.35);
+  backdrop-filter: blur(18px) saturate(0.55);
+  -webkit-backdrop-filter: blur(18px) saturate(0.55);
+  pointer-events: none;
+}
+
 .veil-badge {
   all: initial;
   position: fixed;
+  z-index: 3;
   box-sizing: border-box;
   display: flex;
   align-items: center;

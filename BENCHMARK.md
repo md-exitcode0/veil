@@ -27,11 +27,11 @@ Veil keeps the **public, 4,803-generator** checkpoint and spends the engineering
 | Web-stress head only | 96% | 98% | 97.0% |
 | **Veil ensemble (shipped)** | **98%** | **100%** | **99.0%** |
 
-The ensemble runs Community Forensics first. The web-stress head (MIT, same backbone, JPEG/crop-trained 384→32→1) only runs when CF is uncertain or the image is a large square (typical Midjourney). A barely-over web score cannot flip a photo CF is sure is real — that was a false-positive we measured and closed.
+The ensemble runs Community Forensics first at the **official 0.50 operating point** (displayed as 65%). The web-stress head only runs when CF is in the raw `(0.08, 0.55)` band. A barely-over web score cannot flip a photo CF is sure is real — photo.jpg measures webRaw ≈ 0.88 and stays real.
 
 Single remaining miss on this slice: one Midjourney sample both heads score as real. That is a model limit, not a threshold trick.
 
-p50 73 ms, p95 80 ms on Node ORT CPU (AMD/Intel class laptop). Chrome WebGPU is the production path and is as fast or faster after a one-time shader warmup.
+Host / metadata hits skip the model (0–5 ms). Visual path is one ViT-S/384 pass on pre-cropped 384 px pixels. Chrome WebGPU on an RTX-class laptop, after the one-time shader warmup, measures **37–46 ms median** on the fixture (occasional hitch above that when the first JPEG is decoded). Node ORT CPU on the same weights is ~55–75 ms because the transformer still has 576 tokens — that is not the extension budget.
 
 Tiny 128px GAN thumbnails are the main miss mode. Veil’s default minimum size is **160 px**, which matches ordinary webpage photos and skips tracking pixels / tiny GAN icons.
 

@@ -38,8 +38,167 @@ const PROVENANCE_MARKERS = [
   ['cai:', 'Content Authenticity Initiative metadata']
 ];
 
+const GENERATOR_HOSTS = [
+  ['cdn.midjourney.com', 'Midjourney image host'],
+  ['media.midjourney.com', 'Midjourney image host'],
+  ['mjcdn.com', 'Midjourney image host'],
+  ['civitai.com', 'Civitai image host'],
+  ['image.lexica.art', 'Lexica image host'],
+  ['lexica.art', 'Lexica image host'],
+  ['lexica-serve-encoded-images.sharif.workers.dev', 'Lexica image host'],
+  ['images.openai.com', 'OpenAI image host'],
+  ['oaidalleapiprodscus.blob.core.windows.net', 'DALL·E image host'],
+  ['cdn.leonardo.ai', 'Leonardo image host'],
+  ['leonardo.ai', 'Leonardo image host'],
+  ['ideogram.ai', 'Ideogram image host'],
+  ['cdn.ideogram.ai', 'Ideogram image host'],
+  ['images.nightcafe.studio', 'NightCafe image host'],
+  ['nightcafe.studio', 'NightCafe image host'],
+  ['seaart.ai', 'SeaArt image host'],
+  ['tensor.art', 'Tensor.art image host'],
+  ['openart.ai', 'OpenArt image host'],
+  ['cdn.openart.ai', 'OpenArt image host'],
+  ['pixai.art', 'PixAI image host'],
+  ['krea.ai', 'Krea image host'],
+  ['fal.media', 'Fal image host'],
+  ['replicate.delivery', 'Replicate image host'],
+  ['firefly.adobe.com', 'Firefly image host'],
+  ['playground.com', 'Playground image host'],
+  ['imagine.art', 'ImagineArt image host']
+];
+
+const GENERATOR_PATHS = [
+  [/\/th\/id\/OIG/i, 'Bing Image Creator host'],
+  [/[?&]id=OIG/i, 'Bing Image Creator host']
+];
+
+const LOCATOR_KEYS = ['imgurl', 'imgrefurl', 'ou', 'url', 'src', 'image', 'mediaurl', 'murl', 'media'];
+
 const HEAD_SCAN = 262_144;
 const TAIL_SCAN = 65_536;
+
+export function expandUrlCandidates(source = '') {
+  const seen = new Set();
+  const out = [];
+  const queue = [String(source || '')];
+  while (queue.length) {
+    const raw = queue.shift();
+    if (!raw || seen.has(raw)) continue;
+    seen.add(raw);
+    out.push(raw);
+    try {
+      const decoded = decodeURIComponent(raw);
+      if (decoded !== raw) queue.push(decoded);
+    } catch {
+    }
+    try {
+      const url = new URL(raw, 'https://example.invalid');
+      if (url.pathname.includes('/_next/image') && url.searchParams.has('url')) {
+        queue.push(url.searchParams.get('url') || '');
+      }
+      for (const key of LOCATOR_KEYS) {
+        const value = url.searchParams.get(key);
+        if (value) queue.push(value);
+      }
+    } catch {
+    }
+    const embedded = String(raw).match(/https?:\/\/[^\s"'<>\\]+/g) || [];
+    for (const item of embedded) queue.push(item.replace(/[),.;]+$/, ''));
+  }
+  return out;
+}
+
+export function resolveDisplayedUrl(source = '') {
+  const candidates = expandUrlCandidates(source);
+  for (const candidate of candidates) {
+    try {
+      const host = new URL(candidate).hostname.toLowerCase();
+      if (GENERATOR_HOSTS.some(([needle]) => host === needle || host.endsWith(`.${needle}`))) {
+        return candidate;
+      }
+      if (GENERATOR_PATHS.some(([pattern]) => pattern.test(candidate))) {
+        return candidate;
+      }
+    } catch {
+    }
+  }
+  return candidates[0] || source;
+}
+
+export function firstHttpImageUrl(cssText = '') {
+  const text = String(cssText || '');
+  for (const match of text.matchAll(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi)) {
+    const resolved = normalizeCssImageUrl(match[2]);
+    if (resolved) return resolved;
+  }
+  const set = text.match(/image-set\(\s*(['"]?)((?:https?:|blob:|data:image\/)[^'")\s]+)\1/i);
+  return set ? set[2] : '';
+}
+
+export function normalizeCssImageUrl(raw = '') {
+  const value = String(raw || '').trim().replace(/\\ /g, ' ').replace(/^['"]|['"]$/g, '');
+  if (!value || /^data:image\/svg/i.test(value)) return '';
+  if (/^(https?:|blob:|data:image\/)/i.test(value)) return value;
+  if (value.startsWith('//')) return `https:${value}`;
+  return '';
+}
+
+export function largestSrcFromSrcset(srcset = '') {
+  let best = '';
+  let bestWeight = -1;
+  for (const part of String(srcset).split(',')) {
+    const bits = part.trim().split(/\s+/);
+    const url = bits[0];
+    if (!url) continue;
+    const desc = bits[1] || '';
+    const weight = desc.endsWith('w')
+      ? Number.parseInt(desc, 10)
+      : desc.endsWith('x')
+        ? Number.parseFloat(desc) * 1000
+        : 1;
+    if (Number.isFinite(weight) && weight >= bestWeight) {
+      bestWeight = weight;
+      best = url;
+    }
+  }
+  return best;
+}
+
+export function inspectSourceUrl(source = '') {
+  const candidates = expandUrlCandidates(source);
+  const evidence = [];
+  let resolved = candidates[0] || source;
+  for (const candidate of candidates) {
+    const own = inspectOwnHost(candidate);
+    if (own.evidence.length) {
+      evidence.push(...own.evidence);
+      resolved = candidate;
+    }
+  }
+  return { resolved, evidence: uniqueSignals(evidence) };
+}
+
+export function inspectOwnHost(source = '') {
+  try {
+    const parsed = new URL(source);
+    const host = parsed.hostname.toLowerCase();
+    const evidence = [];
+    for (const [needle, label] of GENERATOR_HOSTS) {
+      if (host === needle || host.endsWith(`.${needle}`)) {
+        evidence.push({ kind: 'host', label, strength: 0.4 });
+      }
+    }
+    const locator = `${parsed.hostname}${parsed.pathname}${parsed.search}`;
+    for (const [pattern, label] of GENERATOR_PATHS) {
+      if (pattern.test(locator)) {
+        evidence.push({ kind: 'host', label, strength: 0.4 });
+      }
+    }
+    return { resolved: source, evidence: uniqueSignals(evidence) };
+  } catch {
+    return { resolved: source, evidence: [] };
+  }
+}
 
 export function inspectEncodedImage(buffer, mimeType = '') {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
@@ -65,13 +224,50 @@ export function inspectEncodedImage(buffer, mimeType = '') {
     provenance.push({ kind: 'provenance', label: 'C2PA PNG assertion box', strength: 0.9 });
   }
 
+  const camera = inspectCameraExif(bytes, format, chunks);
+
   return {
     format,
     byteLength: bytes.byteLength,
     evidence: uniqueSignals(evidence),
     watermarks: uniqueSignals(watermarks),
-    provenance: uniqueSignals(provenance)
+    provenance: uniqueSignals(provenance),
+    camera
   };
+}
+
+const CAMERA_MAKES = [
+  'canon', 'nikon', 'sony', 'fujifilm', 'fuji photo', 'leica', 'panasonic',
+  'olympus', 'om digital', 'pentax', 'ricoh', 'hasselblad', 'phase one',
+  'kodak', 'casio', 'sigma', 'dji', 'gopro',
+  'apple', 'samsung', 'google', 'huawei', 'xiaomi', 'oneplus', 'oppo', 'vivo',
+  'motorola', 'hmd global', 'lg electronics', 'nothing', 'fairphone'
+];
+
+export function inspectCameraExif(buffer, format = '', chunks = []) {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  const decoder = new TextDecoder('latin1');
+  const windows = [];
+  const exifAt = indexOfBytes(bytes, [0x45, 0x78, 0x69, 0x66, 0x00, 0x00], 0, Math.min(bytes.length, 131_072));
+  if (exifAt >= 0) {
+    windows.push(decoder.decode(bytes.subarray(exifAt, Math.min(bytes.length, exifAt + 16_384))));
+  }
+  if (format === 'png') {
+    for (const chunk of chunks) {
+      if (chunk.type === 'eXIf' || chunk.type === 'eXif') {
+        windows.push(decoder.decode(bytes.subarray(chunk.start, chunk.start + Math.min(chunk.length, 16_384))));
+      }
+    }
+  }
+  if (!windows.length) return { found: false, label: '' };
+
+  const haystack = windows.join('\n').toLowerCase();
+  for (const make of CAMERA_MAKES) {
+    if (hasWord(haystack, make)) {
+      return { found: true, label: `Camera EXIF (${make})` };
+    }
+  }
+  return { found: false, label: '' };
 }
 
 export function computePixelSignals(imageData) {
@@ -155,7 +351,8 @@ export function fuseEvidence(modelAiScore, encoded, pixel) {
   const pixelAdj = pixel?.adjustment || 0;
   if (pixelAdj) score = sigmoid(logit(score) + pixelAdj * 3);
 
-  if (encoded.evidence.length > 0) score = Math.max(score, 0.985);
+  const fileHits = (encoded?.evidence || []).filter((item) => item.kind === 'metadata');
+  if (fileHits.length > 0) score = Math.max(score, 0.985);
   return clamp(score, 1e-6, 1 - 1e-6);
 }
 
@@ -224,4 +421,27 @@ function ascii(bytes, start, end) {
 function luminanceAt(data, width, x, y) {
   const index = (y * width + x) * 4;
   return 0.2126 * data[index] + 0.7152 * data[index + 1] + 0.0722 * data[index + 2];
+}
+
+function indexOfBytes(bytes, needle, start, end) {
+  const limit = Math.min(bytes.length, end) - needle.length;
+  for (let i = start; i <= limit; i += 1) {
+    let match = true;
+    for (let j = 0; j < needle.length; j += 1) {
+      if (bytes[i + j] !== needle[j]) {
+        match = false;
+        break;
+      }
+    }
+    if (match) return i;
+  }
+  return -1;
+}
+
+function hasWord(text, needle) {
+  const index = text.indexOf(needle);
+  if (index < 0) return false;
+  const before = index === 0 ? ' ' : text[index - 1];
+  const after = index + needle.length >= text.length ? ' ' : text[index + needle.length];
+  return !/[a-z0-9]/.test(before) && !/[a-z0-9]/.test(after);
 }

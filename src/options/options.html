@@ -45,7 +45,7 @@
             <label class="field field--row">
               <span><strong>Minimum image size</strong><small>Skip icons, avatars, and tracking pixels.</small></span>
               <select id="minimum-dimension">
-                <option value="96">96 px</option>
+                <option value="96" selected>96 px</option>
                 <option value="128">128 px</option>
                 <option value="160">160 px</option>
                 <option value="192">192 px</option>
@@ -53,12 +53,12 @@
               </select>
             </label>
             <label class="field field--row">
-              <span><strong>Images per page</strong><small>Cap work on infinite feeds.</small></span>
+              <span><strong>Images kept in view</strong><small>Older off-screen results are dropped so scrolling never stops.</small></span>
               <select id="max-images">
-                <option value="20">20</option>
-                <option value="40">40</option>
                 <option value="80">80</option>
-                <option value="120">120</option>
+                <option value="200">200</option>
+                <option value="400" selected>400</option>
+                <option value="800">800</option>
               </select>
             </label>
             <label class="field field--row">
@@ -86,7 +86,7 @@
             <ol class="signal-list">
               <li>
                 <strong>Visual model</strong>
-                <p>Community Forensics ViT, on-device. WebGPU when available, otherwise WASM.</p>
+                <p>Community Forensics ViT, on-device. Uses this window's GPU when Chrome exposes one, otherwise threaded WASM.</p>
               </li>
               <li>
                 <strong>Generator traces</strong>
@@ -106,8 +106,8 @@
             <strong>Local weights only · MIT</strong>
           </div>
           <dl>
-            <div><dt>Preferred</dt><dd>WebGPU</dd></div>
-            <div><dt>Fallback</dt><dd>WASM</dd></div>
+            <div><dt>Preferred</dt><dd>WebGPU (high-performance)</dd></div>
+            <div><dt>Fallback</dt><dd>CPU WASM</dd></div>
             <div><dt>After setup</dt><dd>Offline</dd></div>
           </dl>
         </section>

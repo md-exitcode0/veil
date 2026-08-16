@@ -5,21 +5,21 @@ export const MESSAGE = Object.freeze({
   WARM_MODEL: 'veil/warm-model',
   GET_PAGE_STATE: 'veil/get-page-state',
   RESCAN_PAGE: 'veil/rescan-page',
-  ANALYZE_URL: 'veil/analyze-url'
+  ANALYZE_URL: 'veil/analyze-url',
+  HOST_ENGINE: 'veil/host-engine',
+  ENGINE_ALIVE: 'veil/engine-alive'
 });
 
 export const DEFAULT_SETTINGS = Object.freeze({
   enabled: true,
   threshold: 0.65,
   minimumDimension: 160,
-  maxImagesPerPage: 80,
+  maxImagesPerPage: 400,
   showRealScores: true,
   aiImageAction: 'blur',
   dualView: true
 });
 
-// Official Community Forensics ViT-S/384, July 2026 corrected export.
-// Input: shortest-edge 440, center-crop 384, CLIP normalize, single logit + sigmoid.
 export const MODEL = Object.freeze({
   id: 'community-forensics-384',
   upstreamId: 'buildborderless/CommunityForensics-DeepfakeDet-ViT',
@@ -35,14 +35,8 @@ export const MODEL = Object.freeze({
   int8Sha256: '968f113f1107d58bfc73444b6e87020e2d541780ad43b7a1ac3e3b18b86c2bbd',
   mean: Object.freeze([0.48145466, 0.4578275, 0.40821073]),
   std: Object.freeze([0.26862954, 0.26130258, 0.27577711]),
-  // Official training uses a 0.50 operating point on the sigmoid. The bounty
-  // reads the *displayed* score at 0.65. This monotone logit shift puts the
-  // measured decision boundary on that required line without changing rank.
-  // Official recipe is 0.50. Measured on a held-out public mix the
-  // ranking-optimal cut sits much lower because real photos collapse
-  // near 0. Changing this number only slides the 65% display line.
   calibration: Object.freeze({
-    rawThreshold: 0.012,
+    rawThreshold: 0.5,
     displayThreshold: 0.65
   })
 });
@@ -50,8 +44,6 @@ export const MODEL = Object.freeze({
 export const UNCERTAIN_LOW = 0.08;
 export const UNCERTAIN_HIGH = 0.55;
 
-// MIT web-stress head: same ViT-S/384 backbone, ImageNet normalize,
-// small 384→32→1 head trained with JPEG/crop/webp augmentation.
 export const WEB_HEAD = Object.freeze({
   id: 'proofmark-webwild-v3',
   source: 'https://github.com/Dyno-man/Dino-ImageGen-Ext',

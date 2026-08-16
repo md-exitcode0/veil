@@ -26,14 +26,17 @@ for (const input of [
   input.addEventListener('change', handleInput);
 }
 
-elements.warmModel.addEventListener('click', async () => {
+elements.warmModel.addEventListener('click', () => checkReady());
+checkReady();
+
+async function checkReady() {
   elements.warmModel.disabled = true;
   renderModelStatus({ state: 'loading' });
   const result = await chrome.runtime.sendMessage({ type: MESSAGE.WARM_MODEL });
   renderModelStatus(result);
   elements.warmModel.disabled = false;
   elements.warmModel.textContent = result?.ok ? 'Readiness check passed' : 'Try readiness check again';
-});
+}
 
 async function handleInput() {
   elements.thresholdOutput.textContent = `${elements.threshold.value}%`;
@@ -68,10 +71,16 @@ function renderModelStatus(result) {
   if (state === 'loading') {
     elements.modelStatus.innerHTML = '<i></i> Loading the local model…';
   } else if (result?.ok && state === 'ready') {
-    const extra = [result.backend, result.precision].filter(Boolean).join(' · ');
-    elements.modelStatus.innerHTML = `<i></i> Ready${extra ? ` · ${escapeHtml(extra)}` : ''}`;
+    const extra = [result.backend, result.adapter, result.precision].filter(Boolean).join(' · ');
+    const hint = result.gpuHint
+      ? `<small class="model-status__hint">${escapeHtml(result.gpuHint)}</small>`
+      : '';
+    elements.modelStatus.innerHTML = `<i></i> <span>Ready${extra ? ` · ${escapeHtml(extra)}` : ''}${hint}</span>`;
   } else {
-    elements.modelStatus.innerHTML = `<i></i> ${escapeHtml(result?.error || 'Readiness check failed')}`;
+    const hint = result?.gpuHint && result.gpuHint !== result.error
+      ? `<small class="model-status__hint">${escapeHtml(result.gpuHint)}</small>`
+      : '';
+    elements.modelStatus.innerHTML = `<i></i> <span>${escapeHtml(result?.error || 'Readiness check failed')}${hint}</span>`;
   }
 }
 

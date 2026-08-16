@@ -2,7 +2,12 @@ import { DEFAULT_SETTINGS } from './constants.js';
 
 export async function getSettings() {
   const stored = await chrome.storage.local.get('settings');
-  return sanitizeSettings(stored.settings);
+  const settings = sanitizeSettings(stored.settings);
+  if (stored.settings && Number(stored.settings.maxImagesPerPage) <= 80) {
+    settings.maxImagesPerPage = 400;
+    await chrome.storage.local.set({ settings });
+  }
+  return settings;
 }
 
 export async function saveSettings(patch) {
@@ -17,7 +22,7 @@ export function sanitizeSettings(value = {}) {
     enabled: value.enabled !== false,
     threshold: clampNumber(value.threshold, 0.5, 0.95, DEFAULT_SETTINGS.threshold),
     minimumDimension: clampNumber(value.minimumDimension, 48, 512, DEFAULT_SETTINGS.minimumDimension),
-    maxImagesPerPage: Math.round(clampNumber(value.maxImagesPerPage, 5, 200, DEFAULT_SETTINGS.maxImagesPerPage)),
+    maxImagesPerPage: Math.round(clampNumber(value.maxImagesPerPage, 20, 2000, DEFAULT_SETTINGS.maxImagesPerPage)),
     showRealScores: value.showRealScores !== false,
     aiImageAction: ['blur', 'hide', 'label'].includes(value.aiImageAction)
       ? value.aiImageAction

@@ -1,5 +1,6 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { extname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import sharp from 'sharp';
 import { MODEL } from '../src/shared/constants.js';
@@ -18,7 +19,7 @@ if (!root) {
 const threshold = Number(process.env.VEIL_THRESHOLD || 0.65);
 const required = Number(process.env.VEIL_REQUIRED_ACCURACY || 0.75);
 const modelPath = process.env.VEIL_MODEL_PATH
-  || new URL(`../public/models/${MODEL.id}/${MODEL.fp32File}`, import.meta.url).pathname;
+  || fileURLToPath(new URL(`../public/models/${MODEL.id}/${MODEL.fp32File}`, import.meta.url));
 
 const session = await ort.InferenceSession.create(modelPath, {
   executionProviders: ['cpu'],

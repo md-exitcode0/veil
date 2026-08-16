@@ -1,5 +1,7 @@
 import { readdir } from 'node:fs/promises';
 import { extname, join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import sharp from 'sharp';
 import { MODEL, WEB_HEAD } from '../src/shared/constants.js';
@@ -10,9 +12,9 @@ import { fuseModelScores } from '../src/analysis/ensemble.js';
 const require = createRequire(import.meta.url);
 const ort = require('onnxruntime-node');
 
-const root = process.argv[2] || '/tmp/veil-bench2';
-const cfPath = new URL(`../public/models/${MODEL.id}/${MODEL.fp32File}`, import.meta.url).pathname;
-const webPath = new URL(`../public/models/${WEB_HEAD.id}/${WEB_HEAD.weightFile}`, import.meta.url).pathname;
+const root = process.argv[2] || join(tmpdir(), 'veil-bench2');
+const cfPath = fileURLToPath(new URL(`../public/models/${MODEL.id}/${MODEL.fp32File}`, import.meta.url));
+const webPath = fileURLToPath(new URL(`../public/models/${WEB_HEAD.id}/${WEB_HEAD.weightFile}`, import.meta.url));
 
 const cfSession = await ort.InferenceSession.create(cfPath, { executionProviders: ['cpu'] });
 const webSession = await ort.InferenceSession.create(webPath, { executionProviders: ['cpu'] });
