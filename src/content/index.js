@@ -162,9 +162,11 @@ function onAnyScroll() {
   scrollLoop = true;
   const tick = () => {
     updatePositionsNow();
-    scanVisible();
     if (performance.now() - lastScrollAt < 160) requestAnimationFrame(tick);
-    else scrollLoop = false;
+    else {
+      scrollLoop = false;
+      scanVisible();
+    }
   };
   requestAnimationFrame(tick);
 }
@@ -600,7 +602,6 @@ function mountOverlay(node) {
 
 function hideChrome(record) {
   record.badge.style.visibility = 'hidden';
-  if (record.cover) record.cover.style.display = 'none';
 }
 
 function positionBadge(record) {
@@ -610,7 +611,6 @@ function positionBadge(record) {
     return;
   }
   mountOverlay(record.badge);
-  if (record.cover) mountOverlay(record.cover);
 
   const imageRect = image.getBoundingClientRect();
   const visible = imageRect.width >= 28 && imageRect.height >= 28
@@ -621,22 +621,15 @@ function positionBadge(record) {
     return;
   }
 
-  if (record.cover) {
-    record.cover.style.top = `${imageRect.top}px`;
-    record.cover.style.left = `${imageRect.left}px`;
-    record.cover.style.width = `${imageRect.width}px`;
-    record.cover.style.height = `${imageRect.height}px`;
-    record.cover.style.display = 'block';
-  }
-
   if (record.badge.hidden) {
     record.badge.style.visibility = 'hidden';
     return;
   }
   record.badge.style.visibility = 'visible';
   record.badge.style.display = 'flex';
-  record.badge.style.top = `${imageRect.top + 8}px`;
-  record.badge.style.left = `${imageRect.left + Math.max(0, imageRect.width - record.badge.offsetWidth - 8)}px`;
+  const left = imageRect.left + Math.max(0, imageRect.width - (record.badge.offsetWidth || 72) - 8);
+  const top = imageRect.top + 8;
+  record.badge.style.transform = `translate3d(${left}px, ${top}px, 0)`;
 }
 
 function createDetailPanel() {
@@ -860,11 +853,15 @@ function injectPageStyles() {
   const style = document.createElement('style');
   style.id = 'veil-injected-style';
   style.textContent = `
-    img[data-veil-treatment="blur"] { filter: blur(20px) saturate(.55) brightness(.92) !important; }
-    img[data-veil-treatment="hide"] { visibility: hidden !important; }
+    img[data-veil-treatment="blur"],
+    video[data-veil-treatment="blur"],
+    canvas[data-veil-treatment="blur"] { filter: blur(22px) saturate(.55) brightness(.78) !important; }
+    img[data-veil-treatment="hide"],
+    video[data-veil-treatment="hide"],
+    canvas[data-veil-treatment="hide"] { visibility: hidden !important; }
     #veil-overlay-layer { all: initial; position: fixed; inset: 0; z-index: 2147483646; pointer-events: none; }
-    .veil-cover { position: fixed; z-index: 2; background: rgba(20,18,14,.35); backdrop-filter: blur(18px) saturate(.55); -webkit-backdrop-filter: blur(18px) saturate(.55); pointer-events: none; }
-    .veil-badge { position: fixed; z-index: 3; }
+    .veil-cover { position: absolute !important; inset: 0 !important; z-index: 2; background: rgba(20,18,14,.4); backdrop-filter: blur(18px) saturate(.55); -webkit-backdrop-filter: blur(18px) saturate(.55); pointer-events: none; }
+    .veil-badge { position: fixed; top: 0; left: 0; z-index: 3; will-change: transform; }
   `;
   (document.head || document.documentElement).append(style);
 }
@@ -877,22 +874,44 @@ function applyMediaTreatment(record) {
   }
   record.image.dataset.veilTreatment = settings.aiImageAction;
   if (settings.aiImageAction === 'hide') {
-    record.cover?.remove();
-    record.cover = undefined;
+    detachCover(record);
     return;
   }
+  if (isMediaElement(record.image)) {
+    detachCover(record);
+    return;
+  }
+  attachInFlowCover(record);
+}
+
+function attachInFlowCover(record) {
+  const el = record.image;
+  if (!(el instanceof HTMLElement)) return;
   if (!record.cover) {
     record.cover = document.createElement('div');
     record.cover.className = 'veil-cover';
     record.cover.setAttribute('aria-hidden', 'true');
-    mountOverlay(record.cover);
   }
-  schedulePositions();
+  if (record.cover.parentElement !== el) {
+    if (getComputedStyle(el).position === 'static') {
+      el.style.position = 'relative';
+      record.coverResetPosition = true;
+    }
+    el.append(record.cover);
+  }
+}
+
+function detachCover(record) {
+  record.cover?.remove();
+  record.cover = undefined;
+  if (record.coverResetPosition && record.image instanceof HTMLElement) {
+    record.image.style.removeProperty('position');
+    record.coverResetPosition = false;
+  }
 }
 
 function clearRecordTreatment(record) {
-  record.cover?.remove();
-  record.cover = undefined;
+  detachCover(record);
   if (record.image) delete record.image.dataset.veilTreatment;
 }
 
