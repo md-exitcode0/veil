@@ -155,7 +155,12 @@ const onScreen = new Set();
 const supportsAnchor = typeof CSS !== 'undefined' && CSS.supports?.('anchor-name', '--veil');
 document.addEventListener('scroll', onAnyScroll, { capture: true, passive: true });
 window.addEventListener('scroll', onAnyScroll, { capture: true, passive: true });
-window.addEventListener('resize', schedulePositions, { passive: true });
+window.addEventListener('resize', () => {
+  for (const record of records.values()) {
+    if (record.cover) syncCoverToMedia(record);
+  }
+  schedulePositions();
+}, { passive: true });
 document.addEventListener('visibilitychange', schedulePositions);
 
 function onAnyScroll() {
@@ -895,12 +900,12 @@ function injectPageStyles() {
   style.textContent = `
     img[data-veil-treatment="blur"],
     video[data-veil-treatment="blur"],
-    canvas[data-veil-treatment="blur"] { filter: blur(16px) saturate(.55) brightness(.78) !important; transform: translateZ(0); }
+    canvas[data-veil-treatment="blur"] { visibility: hidden !important; }
     img[data-veil-treatment="hide"],
     video[data-veil-treatment="hide"],
     canvas[data-veil-treatment="hide"] { visibility: hidden !important; }
     #veil-overlay-layer { all: initial; position: fixed; inset: 0; z-index: 2147483646; pointer-events: none; }
-    .veil-cover { position: absolute !important; inset: 0 !important; z-index: 2; background: rgba(20,18,14,.48); pointer-events: none; }
+    .veil-cover { position: absolute !important; inset: 0 !important; z-index: 2; background: #1c1916; pointer-events: none; }
     .veil-badge { position: fixed; top: 0; left: 0; z-index: 3; will-change: transform; }
   `;
   (document.head || document.documentElement).append(style);
@@ -917,37 +922,68 @@ function applyMediaTreatment(record) {
     detachCover(record);
     return;
   }
-  if (isMediaElement(record.image)) {
-    detachCover(record);
-    return;
-  }
   attachInFlowCover(record);
+}
+
+function coverHost(el) {
+  if (el instanceof HTMLImageElement || el instanceof HTMLVideoElement || el instanceof HTMLCanvasElement) {
+    return el.parentElement;
+  }
+  return el instanceof HTMLElement ? el : null;
 }
 
 function attachInFlowCover(record) {
   const el = record.image;
-  if (!(el instanceof HTMLElement)) return;
+  const host = coverHost(el);
+  if (!(host instanceof HTMLElement)) return;
   if (!record.cover) {
     record.cover = document.createElement('div');
     record.cover.className = 'veil-cover';
     record.cover.setAttribute('aria-hidden', 'true');
   }
-  if (record.cover.parentElement !== el) {
-    if (getComputedStyle(el).position === 'static') {
-      el.style.position = 'relative';
+  if (record.cover.parentElement !== host) {
+    if (getComputedStyle(host).position === 'static') {
+      host.style.position = 'relative';
       record.coverResetPosition = true;
+      record.coverPositionEl = host;
     }
-    el.append(record.cover);
+    host.append(record.cover);
   }
+  syncCoverToMedia(record);
+}
+
+function syncCoverToMedia(record) {
+  const el = record.image;
+  const cover = record.cover;
+  const host = cover?.parentElement;
+  if (!cover || !host || host === el) return;
+  const fillsHost = el.offsetWidth >= host.clientWidth - 2
+    && el.offsetHeight >= host.clientHeight - 2
+    && el.offsetTop <= 1
+    && el.offsetLeft <= 1;
+  if (fillsHost) {
+    cover.style.inset = '0';
+    cover.style.width = '';
+    cover.style.height = '';
+    cover.style.top = '';
+    cover.style.left = '';
+    return;
+  }
+  cover.style.inset = 'auto';
+  cover.style.top = `${el.offsetTop}px`;
+  cover.style.left = `${el.offsetLeft}px`;
+  cover.style.width = `${el.offsetWidth}px`;
+  cover.style.height = `${el.offsetHeight}px`;
 }
 
 function detachCover(record) {
   record.cover?.remove();
   record.cover = undefined;
-  if (record.coverResetPosition && record.image instanceof HTMLElement) {
-    record.image.style.removeProperty('position');
-    record.coverResetPosition = false;
+  if (record.coverResetPosition && record.coverPositionEl instanceof HTMLElement) {
+    record.coverPositionEl.style.removeProperty('position');
   }
+  record.coverResetPosition = false;
+  record.coverPositionEl = undefined;
 }
 
 function clearRecordTreatment(record) {
